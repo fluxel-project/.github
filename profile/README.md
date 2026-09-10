@@ -1,8 +1,10 @@
 # Fluxel Ecosystem
 
-Fluxel is a native-first, Three.js-informed, AI-friendly lightweight rendering
-runtime. Rust and native runtime behavior are authoritative. Development follows
-visible demo closure rather than completing architectural layers in advance.
+Fluxel is a native-first, Three-like, AI-friendly lightweight rendering
+runtime. “Three-like” describes approachable scene concepts, not Three.js API
+compatibility. Rust and native runtime behavior are authoritative. Development
+follows visible demo closure rather than completing architectural layers in
+advance.
 
 > **Current target:** close the reproducible headless baseline, then present the
 > first DX12 image in a Windows window.
@@ -57,11 +59,18 @@ increases; that coarseness is not permission to exceed the stated boundary.
 **Boundary:** close the current headless slice. Do not add windows, scene APIs,
 new fixed recipes, assets, loaders, or runtime composition.
 
-- [ ] Unify workspace release and Git revision rules.
-- [ ] Preserve structured renderer errors.
-- [ ] Make CPU, CI, and real-GPU conformance evidence reproducible.
-- [ ] Audit RenderGraph public exports.
-- [ ] Freeze new `draw_*` recipes and upload-state types.
+**Status:** In progress.
+
+**Latest retained evidence:** [`fluxel-renderer` v0.7.0](https://github.com/fluxel-project/fluxel-renderer/releases/tag/v0.7.0),
+with 83/83 ignored real-GPU cases passing on AMD Radeon 780M Graphics across
+DX12 and Vulkan.
+
+- [x] Unify workspace release and Git revision rules.
+- [x] Preserve structured renderer errors.
+- [x] Make CPU, CI, and real-GPU conformance evidence reproducible.
+- [x] Audit RenderGraph public exports.
+- [x] Freeze new `draw_*` recipes and upload-state types.
+- [ ] Re-run and retain the complete baseline on the final Stage 0 commit.
 
 ### Stage 1 — Windows visible renderer
 
@@ -145,5 +154,6 @@ cascade, or a general reactive framework.
 - [Evidence policy](https://github.com/fluxel-project/.github/blob/main/EVIDENCE_POLICY.md)
 - [Stage 1 Windows guide](https://github.com/fluxel-project/.github/blob/main/stages/stage-01-windows.md)
 
-Project-local `AGENTS.md` files define the current repository's ownership,
-modification locations, focused verification commands, and real-target gates.
+Participating repositories should maintain local, ignored `AGENTS.md` guidance
+for ownership, modification locations, focused verification commands, and
+real-target gates.

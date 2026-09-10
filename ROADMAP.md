@@ -1,8 +1,9 @@
 # Fluxel Roadmap
 
 Fluxel is a native-first, Three-like, AI-friendly lightweight rendering
-runtime. This is an execution map, not a release schedule or a promise to
-create every named crate.
+runtime. “Three-like” describes approachable scene concepts, not Three.js API
+compatibility. This is an execution map, not a release schedule or a promise
+to create every named crate.
 
 **Current target:** reproducible baseline, then the first visible DX12 window.
 
@@ -23,25 +24,37 @@ extend fixed rendering recipes in this stage.
 surface API, multi-frame API, scene model, loader, asset manager, or runtime
 crate belongs here.
 
+**Status:** In progress.
+
+**Latest retained evidence:** [`fluxel-renderer` v0.7.0](https://github.com/fluxel-project/fluxel-renderer/releases/tag/v0.7.0),
+tag commit `6bd3a25`. Its retained `manifest.json` and `cargo.log` record Windows
+`x86_64-pc-windows-msvc` on AMD Radeon 780M Graphics, with 83/83 ignored
+real-GPU cases passing across DX12 and Vulkan and no validation diagnostics
+observed.
+
 **TODO**
 
-- [ ] Define one workspace version and release-tag rule for crates shipped
+- [x] Define one workspace version and release-tag rule for crates shipped
       together.
-- [ ] Pin every documented Git dependency example to a tag or revision.
-- [ ] Keep renderer failures structured through its public boundary; do not
+- [x] Pin the documented workspace Git dependency examples to tag `v0.7.0`.
+- [x] Keep renderer failures structured through its public boundary; do not
       erase backend, validation, resource, or submission failures into text.
-- [ ] Add one GPU conformance entry point that records commit SHA, OS, target,
+- [x] Add one GPU conformance entry point that records commit SHA, OS, target,
       backend, adapter, device, driver, commands, results, and diagnostics.
-- [ ] Run and retain results for the relevant ignored real-GPU RHI and renderer
+- [x] Run and retain results for the relevant ignored real-GPU RHI and renderer
       tests.
-- [ ] Audit RenderGraph exports and remove accidental implementation or backend
+- [x] Audit RenderGraph exports and remove accidental implementation or backend
       surface.
-- [ ] Keep native resources, barriers, commands, submission, and readback in
+- [x] Keep native resources, barriers, commands, submission, and readback in
       RHI; keep RenderGraph portable and declarative.
-- [ ] Freeze the `draw_*` recipe family and public upload-state types.
+- [x] Freeze the `draw_*` recipe family and public upload-state types for Stage
+      0; additions require reopening the stage plan.
+- [ ] Re-run the complete baseline on the final fixed Stage 0 commit and retain
+      the verified Release artifacts.
 
-**Close when:** a fixed commit can reproduce documented CPU, CI, and retained
-real-GPU evidence. A missing real-GPU report leaves the stage open.
+**Close when:** the final fixed Stage 0 commit reproduces documented CPU, CI,
+and retained real-GPU evidence. The v0.7.0 evidence is the latest baseline, not
+automatic closure for a later commit.
 
 ## Stage 1 — Windows visible renderer
 

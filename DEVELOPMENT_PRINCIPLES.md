@@ -4,6 +4,10 @@ These principles govern the ecosystem and its repositories. They are stable
 decision rules, not a release schedule or a promise to create every named
 library.
 
+Fluxel is a native-first, Three-like, AI-friendly lightweight rendering
+runtime. “Three-like” describes approachable scene concepts, not Three.js API
+compatibility.
+
 ## Native-first semantics
 
 - Rust APIs and native runtime behavior are authoritative. JavaScript, WASM,
@@ -82,8 +86,9 @@ after Canvas, text, input, and runtime lifecycles are proven.
 - Use the same terms and operation order in code, demos, tests, diagnostics,
   and documentation. Rename consistently instead of retaining speculative
   compatibility aliases.
-- Each participating repository's `AGENTS.md` states ownership, normal edit
-  locations, focused verification commands, and required real-target evidence.
+- Each participating repository should provide local `AGENTS.md` guidance for
+  ownership, normal edit locations, focused verification commands, and required
+  real-target evidence.
 
 ## Delivery discipline
 
