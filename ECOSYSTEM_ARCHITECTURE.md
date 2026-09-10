@@ -36,10 +36,10 @@ flowchart TD
     canvas --> assets
     renderer --> shader["fluxel-shader"]
     canvas --> shader
-    renderer --> graph["fluxel-rendergraph"]
-    canvas --> graph
+    renderer --> render_graph["fluxel-rendergraph"]
+    canvas --> render_graph
     assets --> rhi["fluxel-rhi"]
-    rhi --> graph
+    rhi --> render_graph
 ```
 
 An edge means the source may depend on the target when that capability exists;
