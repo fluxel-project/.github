@@ -51,6 +51,9 @@ after Canvas, text, input, and runtime lifecycles are proven.
 
 - The next visible, testable demo closure determines implementation order.
   Layering determines code ownership, not when a crate must exist.
+- [ECOSYSTEM_ARCHITECTURE.md](ECOSYSTEM_ARCHITECTURE.md) is the expected
+  ownership and dependency map. It reserves candidate boundaries but does not
+  authorize repository creation or change roadmap order.
 - Reuse and extend the current demo. Extract a crate only after the vertical
   slice demonstrates an independently changing responsibility.
 - Do not broaden a public API for a hypothetical target. Record the missing

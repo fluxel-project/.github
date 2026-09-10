@@ -31,7 +31,9 @@ advance.
 
 Layer ownership determines where code belongs. It does not determine development
 order. Names that do not yet have a demonstrated implementation need are
-candidate boundaries, not instructions to create repositories.
+candidate boundaries, not instructions to create repositories. The complete
+library and dependency map is in
+[Ecosystem architecture](https://github.com/fluxel-project/.github/blob/main/ECOSYSTEM_ARCHITECTURE.md).
 
 - **Foundation and host:** base, time, filesystem, storage, networking, input,
   image, audio, and platform lifecycle are candidate boundaries extracted only
@@ -150,6 +152,7 @@ cascade, or a general reactive framework.
 ## Working documents
 
 - [Full roadmap](https://github.com/fluxel-project/.github/blob/main/ROADMAP.md)
+- [Ecosystem architecture](https://github.com/fluxel-project/.github/blob/main/ECOSYSTEM_ARCHITECTURE.md)
 - [Development principles](https://github.com/fluxel-project/.github/blob/main/DEVELOPMENT_PRINCIPLES.md)
 - [Evidence policy](https://github.com/fluxel-project/.github/blob/main/EVIDENCE_POLICY.md)
 - [Stage 1 Windows guide](https://github.com/fluxel-project/.github/blob/main/stages/stage-01-windows.md)

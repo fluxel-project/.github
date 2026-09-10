@@ -13,7 +13,9 @@ when that demo proves an independently changing ownership boundary.
 
 Read [development principles](DEVELOPMENT_PRINCIPLES.md) before changing the
 roadmap or public APIs. Read the [evidence policy](EVIDENCE_POLICY.md) before
-claiming a stage is complete.
+claiming a stage is complete. Use the
+[ecosystem architecture](ECOSYSTEM_ARCHITECTURE.md) to place responsibilities;
+it does not authorize a stage or repository.
 
 ## Stage 0 — Reproducible baseline
 
