@@ -4,48 +4,74 @@ This map defines expected ownership and dependency direction. It does not
 authorize repository creation or determine development order.
 
 The roadmap remains demo-driven. A candidate becomes a repository or crate only
-after its creation trigger is demonstrated and its boundary is reviewed. Until
+after its extraction gate is demonstrated and its boundary is reviewed. Until
 then, the name reserves an expected ownership location so application and AI
 work do not place the responsibility in an unrelated library.
 
 ## Dependency direction
 
-```text
-App / UI
-    ↓
-Runtime
-    ↓
-Renderer / Canvas
-    ↓
-Assets / Loader
-    ↓
-RenderGraph
-    ↓
-RHI
-    ↓
-Platform / Native API
+```mermaid
+flowchart TD
+    app["App / fluxel-ui"] --> runtime["fluxel-runtime"]
+    js["fluxel-js"] --> bridge["fluxel-jsbridge"]
+    bridge --> vm["fluxel-vm-js"]
+    bridge --> runtime
+    abi["fluxel-runtime-abi"] --> runtime
+
+    runtime --> platform["fluxel-platform"]
+    runtime --> time["fluxel-time"]
+    runtime --> input["fluxel-input"]
+    runtime --> storage["fluxel-storage"]
+    runtime --> audio["fluxel-audio"]
+    runtime --> loader["fluxel-loader"]
+    runtime --> assets["fluxel-assets"]
+    runtime --> renderer["fluxel-renderer"]
+    runtime --> canvas["fluxel-canvas"]
+
+    loader --> fs["fluxel-fs"]
+    loader --> net["fluxel-net"]
+    loader --> image["fluxel-image"]
+
+    renderer --> assets
+    canvas --> assets
+    renderer --> shader["fluxel-shader"]
+    canvas --> shader
+    renderer --> graph["fluxel-rendergraph"]
+    canvas --> graph
+    assets --> rhi["fluxel-rhi"]
+    rhi --> graph
 ```
 
-The diagram shows the expected downward dependency direction, not a requirement
-that every library depend on every lower row. Data and results may flow upward
-through typed APIs, callbacks, or owned values; lower layers must not import
+An edge means the source may depend on the target when that capability exists;
+it does not require either candidate library to be created. `fluxel-base` is
+omitted from the graph because it is a cross-cutting leaf boundary that may be
+used only by demonstrated consumers. Data and results may flow upward through
+typed APIs, callbacks, or owned values; lower layers must not import
 higher-level application policy.
 
 ## Library boundaries
 
-| Library | Status | Responsibility | Creation trigger |
+Status has a precise planning meaning:
+
+- **Existing:** implemented workspace crate and established ownership boundary.
+- **Candidate:** likely to be exercised by a named roadmap stage, but extraction
+  into a crate or repository is not committed.
+- **Unscheduled:** recognized possible ownership boundary with no planned stage
+  or delivery commitment.
+
+| Library | Status | Responsibility | Extraction gate |
 | --- | --- | --- | --- |
-| `fluxel-rhi` | Existing | GPU objects, commands, native synchronization, submission, readback, and backend realization | Already exists in `fluxel-renderer` |
-| `fluxel-rendergraph` | Existing | Single-frame pass declarations, resource dependencies, logical synchronization, portable execution plans, and validation | Already exists in `fluxel-renderer` |
-| `fluxel-renderer` | Existing | 3D submission, render packets, deterministic ordering, grouping, and lowering into RenderGraph | Already exists in `fluxel-renderer` |
-| `fluxel-platform` | Candidate | Application startup, windows, screens, DPI, surfaces, resize, and host lifecycle | Multiple host paths prove a stable boundary; Stage 1 alone may use a narrow validation host |
+| `fluxel-rhi` | Existing | GPU objects, commands, native synchronization, submission, readback, and backend realization | Existing workspace crate in the `fluxel-renderer` repository |
+| `fluxel-rendergraph` | Existing | Single-frame pass declarations, resource dependencies, logical synchronization, portable execution plans, and validation | Existing workspace crate in the `fluxel-renderer` repository |
+| `fluxel-renderer` | Existing | 3D submission, render packets, deterministic ordering, grouping, and lowering into RenderGraph | Existing workspace crate in the `fluxel-renderer` repository |
+| `fluxel-platform` | Candidate | Application startup, windows, screens, DPI, surfaces, resize, and host lifecycle | Stage 4 proves reusable host lifecycle independent of the demo; additional hosts validate portability |
 | `fluxel-loader` | Candidate | Obtain and decode CPU data from memory, files, URLs, and selected formats | Stage 4 introduces a real loading path used by the playable demo |
 | `fluxel-assets` | Candidate | Durable resource identity, typed handles, generations, cross-frame references, residency, cache/reuse, and safe release | Stage 4 proves cross-frame identity, reuse, and retirement |
 | `fluxel-time` | Candidate | Clocks, frame timing, timers, timeouts, and fixed-update timing | Stage 4 needs reusable timing beyond its host loop |
 | `fluxel-input` | Candidate | Keyboard, mouse, touch, wheel, and gamepad input values and event translation | A playable or mobile demo proves shared input semantics |
 | `fluxel-runtime` | Candidate | Compose platform, time, input, assets, loading, and rendering into a running application | The Stage 4 Windows playable demo proves a stable composition boundary |
 | `fluxel-canvas` | Candidate | Canvas-style 2D drawing semantics, including images, sprites, transforms, clipping, blending, ordering, text, and offscreen work | Stage 6 proves the Canvas boundary with one shared demo |
-| `fluxel-shader` | Unscheduled | Shader compilation, reflection, variants, and caching | Multiple renderer consumers demonstrate independent shader-toolchain policy |
+| `fluxel-shader` | Unscheduled | Shader compilation, reflection, variants, and caching | Shader compilation, reflection, variant, or cache policy evolves independently from renderer submission |
 | `fluxel-base` | Unscheduled | Small stateless cross-platform utilities such as encoding, hashing, and byte or string helpers | More than one real consumer needs a coherent shared utility boundary |
 | `fluxel-fs` | Unscheduled | Files, directories, paths, streams, and random-access I/O | A runtime consumer needs a portable filesystem contract beyond loader internals |
 | `fluxel-storage` | Unscheduled | Application persistence for key-value data, JSON, blobs, and local storage | A real application requires persistent state across supported hosts |
@@ -56,19 +82,30 @@ higher-level application policy.
 | `fluxel-vm-js` | Unscheduled | JavaScript VM integration across selected native or web hosts | A selected host requires VM-independent runtime integration |
 | `fluxel-jsbridge` | Unscheduled | Rust/JavaScript objects, handles, calls, promises, and data conversion | The selected VM host needs a reusable typed bridge |
 | `fluxel-js` | Unscheduled | Developer-facing JavaScript API over authoritative Rust runtime semantics | A real JavaScript application validates one supported public path |
-| `fluxel-ui` | Unscheduled | Purpose-built declarative UI over runtime, Canvas, text, assets, and input | Stage 7 proves a real HUD or settings screen and later demand justifies extraction |
+| `fluxel-ui` | Unscheduled | Purpose-built declarative UI over runtime, Canvas, text, assets, and input | A later consumer demonstrates reusable declarative UI beyond the Stage 7 screen |
 
 ## Relationship rules
 
-- `fluxel-platform` owns host lifecycle and supplies the native window or
-  surface integration required by RHI. RHI owns GPU use of those native handles.
+- `fluxel-input` owns normalized keyboard, mouse, touch, wheel, and gamepad
+  events. Do not create a generic event library merely to transport input.
+- `fluxel-platform` owns OS event pumping, windows, surfaces, and host lifecycle;
+  `fluxel-time` owns clocks and timing calculations; `fluxel-runtime`
+  coordinates main-loop and frame-update policy. None should duplicate the
+  others' state machine.
+- Platform integration supplies the window or surface native handle needed by
+  RHI. This does not require RHI to depend on the complete `fluxel-platform`
+  crate; RHI owns only the GPU use and lifetime contract of the received handle.
 - `fluxel-rhi` owns native barriers, queues, fences, commands, submission, and
-  readback. RenderGraph expresses portable dependencies and synchronization
-  requirements but does not implement native synchronization.
+  readback. RHI depends on the portable RenderGraph contracts it realizes;
+  RenderGraph does not import RHI or implement native synchronization.
 - `fluxel-renderer` and `fluxel-canvas` consume RenderGraph and prepared
   resources. They do not own durable asset identity or application lifecycle.
-- `fluxel-loader` obtains and decodes CPU data. `fluxel-assets` decides how that
-  data is identified, retained, reused, made resident, and released safely.
+- `fluxel-loader` orchestrates obtaining and decoding CPU data. Format codecs
+  may initially remain internal or external dependencies; extract
+  `fluxel-image` only when image behavior has independent consumers.
+- `fluxel-assets` decides how loaded data is identified, retained, reused, made
+  resident, and released safely. Renderer and Canvas consume assets but do not
+  depend on Loader to submit already prepared resources.
 - `fluxel-runtime` composes lower libraries. It does not absorb their internal
   policy or replace their direct Rust APIs with an ABI.
 - `fluxel-runtime-abi` packages the assembled runtime for embedders. It is not a
