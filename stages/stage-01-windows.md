@@ -81,37 +81,48 @@ alternating-clear, residual, or occlusion artifacts, followed by clean close.
 
 ### Boundary
 
-- [ ] Model resize, zero width or height, minimization, restoration, and close
+- [x] Model resize, zero width or height, minimization, restoration, and close
   as distinct host events.
-- [ ] Do not acquire or submit a drawable frame while size is invalid.
-- [ ] Recreate required surface resources after a valid size returns.
-- [ ] Assign each recreated surface state a generation. Recreation stops new
+- [x] Do not acquire or submit a drawable frame while size is invalid.
+- [x] Recreate required surface resources after a valid size returns.
+- [x] Assign each recreated surface state a generation. Recreation stops new
       acquisition from the old generation but does not make its presentable
       resources releasable; retire that generation only after every GPU
       reference has reached known completion.
-- [ ] Define which resources survive resize and which retire before
+- [x] Define which resources survive resize and which retire before
   replacement; never overwrite or destroy GPU-in-use swapchain state.
-- [ ] Preserve structured, diagnosable device, surface, acquisition, and
+- [x] Preserve structured, diagnosable device, surface, acquisition, and
   presentation failures. Do not silence known validation noise.
 
 ### Focused checks
 
-- [ ] Exercise resize, zero-size, minimize, restore, and exit as separate
+- [x] Exercise resize, zero-size, minimize, restore, and exit as separate
   cases.
-- [ ] Exercise recreation after prior work is still completing.
-- [ ] Assert that invalid dimensions cause no drawable submission.
+- [x] Exercise recreation after prior work is still completing.
+- [x] Assert that invalid dimensions cause no drawable submission.
 
 ### Real-target proof
 
-- [ ] Run a repeatable DX12 resize, minimize, restore, and exit sequence on a
+- [x] Run a repeatable DX12 resize, minimize, restore, and exit sequence on a
   real Windows target.
-- [ ] Retain lifecycle diagnostics and record any accepted validation
+- [x] Retain lifecycle diagnostics and record any accepted validation
   diagnostic under the evidence policy.
 
 ### Stop / close condition
 
-- [ ] Close only when the sequence completes without unexplained validation
+- [x] Close only when the sequence completes without unexplained validation
   errors or submission at invalid size.
+
+Closed by [`fluxel-rendering` `v0.8.1`](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.8.1)
+at `97558a8`, using [`fluxel-host` `v0.2.0`](https://github.com/fluxel-project/fluxel-host/releases/tag/v0.2.0)
+at `ae4bda3`. The release artifact records AMD Radeon 780M / driver
+`32.0.21028.2002`, surface generations 1–4 over logical extents 960x540,
+800x600, suspended zero-size, restored 800x600, and 1100x620, plus 5161
+presented frames and 191 suspended iterations. Its 120 timestamped sampling
+points retain both desktop and exact-window images (240 PNG); reviewers opened
+the first, middle, final, and lifecycle-boundary samples and observed the same
+black clear and blue triangle without residual, alternating, or flickering
+frames. Validation, close, and shutdown were clean.
 
 ## 1.3 — Private bounded frames-in-flight lifetime
 

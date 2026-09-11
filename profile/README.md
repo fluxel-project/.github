@@ -6,7 +6,7 @@ compatibility. Rust rendering and host contracts are authoritative. Development
 follows visible demo closure rather than completing architectural layers in
 advance.
 
-> **Current target:** prove DX12 resize, minimize, restore, and surface-generation lifecycle.
+> **Current target:** prove bounded frames-in-flight lifetime and back pressure on DX12.
 
 ## What Fluxel is
 
@@ -102,7 +102,9 @@ not depend on Host.
 
 - [x] Present the first DX12 triangle (`fluxel-rendering` `v0.8.0`; 120 dense
   visual samples across 899 presented frames, clean validation and shutdown).
-- [ ] Close resize, minimize, restore, and surface recreation.
+- [x] Close resize, minimize, restore, and surface recreation
+  (`fluxel-rendering` `v0.8.1`; generations 1–4, 120 timestamped samples / 240
+  screenshots, clean validation and shutdown; `fluxel-host` `v0.2.0`).
 - [ ] Prove private multi-frame acquisition, submission, completion, and
   retirement.
 - [ ] Align the same demo on Windows Vulkan.

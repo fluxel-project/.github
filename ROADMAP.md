@@ -102,7 +102,7 @@ out of scope.
 
 - [x] 1.1 DX12 first image: create a window and surface, clear, draw a fixed
       triangle, present, close cleanly, and release in a valid order.
-- [ ] 1.2 Surface lifecycle: handle resize, minimize, restore, invalid sizes,
+- [x] 1.2 Surface lifecycle: handle resize, minimize, restore, invalid sizes,
       recreation, and structured surface or device failures. A new surface
       generation stops acquisition from the old generation but does not release
       its presentable resources until every GPU reference reaches known completion.
@@ -122,6 +122,15 @@ Stage 1.1 closed in `fluxel-rendering` `v0.8.0` (`800b390`) with the reusable
 Window primitive supplied by `fluxel-host` `v0.1.0` (`e02b736`). The retained
 release evidence records 899 presented DX12 frames, 120 dense client captures
 with a stable visible triangle, clean required validation, and clean shutdown.
+
+Stage 1.2 closed in `fluxel-rendering` `v0.8.1` (`97558a8`) with ordered window
+lifecycle events supplied by `fluxel-host` `v0.2.0` (`ae4bda3`). RHI-owned
+surface generations stop acquisition before completion-driven retirement and
+reconfiguration; invalid extents suspend drawable work. The retained DX12
+evidence records generations 1–4 across resize, minimize, restore, and close,
+5161 presented frames, 191 suspended iterations, 120 timestamped samples / 240
+screenshots, clean validation, and clean shutdown. Reviewers opened samples at
+each boundary and found the expected stable black clear and blue triangle.
 
 **Close when:** the same scene runs continuously on DX12 and Vulkan, survives the
 defined lifecycle sequence, shuts down cleanly, and retains visual,
