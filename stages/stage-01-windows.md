@@ -29,44 +29,53 @@ Global artifact, diagnostic, and performance requirements are defined in
 
 ### Boundary
 
-- [ ] In `fluxel-host`, create the minimum fixed-size Win32 `Window`: creation
+- [x] In `fluxel-host`, create the minimum fixed-size Win32 `Window`: creation
   and destruction, message pump, close request, and standard window/display
   handles. Do not add Input, Clock, or a general platform API.
-- [ ] In `fluxel-rendering`, use only those standard handles to create the
+- [x] In `fluxel-rendering`, use only those standard handles to create the
   minimum DX12 surface or swapchain path needed by the demo.
-- [ ] Acquire an image, clear it, draw a fixed triangle, present it, and handle
+- [x] Acquire an image, clear it, draw a fixed triangle, present it, and handle
   the close event.
-- [ ] Wait for required GPU work and release resources in a valid shutdown
+- [x] Wait for required GPU work and release resources in a valid shutdown
   order.
-- [ ] Keep the reusable window primitive in Host and the proof executable in
+- [x] Keep the reusable window primitive in Host and the proof executable in
   rendering. Do not create a general platform API from this one path.
-- [ ] Keep HWND, DXGI, queues, fences, descriptors, and all other native types
+- [x] Keep HWND, DXGI, queues, fences, descriptors, and all other native types
   inside the RHI native boundary. Renderer and RenderGraph public APIs must not
   gain DX12 variants.
 
 ### Focused checks
 
-- [ ] Add focused tests for newly introduced platform-independent state and
+- [x] Add focused tests for newly introduced platform-independent state and
   error paths.
-- [ ] Check normal creation, present, close, GPU completion, and repeated
+- [x] Check normal creation, present, close, GPU completion, and repeated
   startup/shutdown.
-- [ ] Confirm that a presentable triangle, rather than an offscreen or
+- [x] Confirm that a presentable triangle, rather than an offscreen or
   clear-only result, is the demonstrated path.
 
 ### Real-target proof
 
-- [ ] Retain and inspect a Windows DX12 capture of the presented triangle. For
+- [x] Retain and inspect a Windows DX12 capture of the presented triangle. For
   continuous frames, retain multiple time-separated captures plus a dense
   frame sample, readback sequence, or recording sufficient to expose an
   alternating clear/flicker defect.
-- [ ] Retain adapter, driver, backend, validation, and clean-shutdown
+- [x] Retain adapter, driver, backend, validation, and clean-shutdown
   diagnostics according to the evidence policy.
 
 ### Stop / close condition
 
-- [ ] Close only when the triangle is visibly presented and the window exits
+- [x] Close only when the triangle is visibly presented and the window exits
   without unexplained validation errors. A clear-only window, offscreen image,
   or unpresented triangle does not close this substage.
+
+Closed by [`fluxel-rendering` `v0.8.0`](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.8.0)
+at `800b390`, using [`fluxel-host` `v0.1.0`](https://github.com/fluxel-project/fluxel-host/releases/tag/v0.1.0)
+at `e02b736`. The release artifact records the AMD Radeon 780M / driver
+`32.0.21028.2002`, required validation with no diagnostics, 899 presented
+frames, and 120 dense client-area captures over about 6.86 seconds. Reviewers
+opened the first, middle, and final full-window samples plus a content crop;
+all showed the same black background and blue triangle without blank,
+alternating-clear, residual, or occlusion artifacts, followed by clean close.
 
 ## 1.2 — Surface lifecycle
 

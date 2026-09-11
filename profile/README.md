@@ -6,7 +6,7 @@ compatibility. Rust rendering and host contracts are authoritative. Development
 follows visible demo closure rather than completing architectural layers in
 advance.
 
-> **Current target:** present the first DX12 image in a Windows window.
+> **Current target:** prove DX12 resize, minimize, restore, and surface-generation lifecycle.
 
 ## What Fluxel is
 
@@ -100,7 +100,8 @@ window/display handles). The executable remains in `fluxel-rendering`; RHI owns
 surface, swapchain, presentation, and GPU synchronization, and rendering does
 not depend on Host.
 
-- [ ] Present the first DX12 triangle.
+- [x] Present the first DX12 triangle (`fluxel-rendering` `v0.8.0`; 120 dense
+  visual samples across 899 presented frames, clean validation and shutdown).
 - [ ] Close resize, minimize, restore, and surface recreation.
 - [ ] Prove private multi-frame acquisition, submission, completion, and
   retirement.

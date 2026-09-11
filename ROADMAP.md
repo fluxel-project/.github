@@ -100,7 +100,7 @@ out of scope.
 
 **TODO**
 
-- [ ] 1.1 DX12 first image: create a window and surface, clear, draw a fixed
+- [x] 1.1 DX12 first image: create a window and surface, clear, draw a fixed
       triangle, present, close cleanly, and release in a valid order.
 - [ ] 1.2 Surface lifecycle: handle resize, minimize, restore, invalid sizes,
       recreation, and structured surface or device failures. A new surface
@@ -117,6 +117,11 @@ out of scope.
       scene naturally demonstrates at least one real CPU-preparation dependency
       DAG; do not invent tasks merely to integrate it. RenderGraph retains GPU-
       resource semantics and `slot-graph` types remain private.
+
+Stage 1.1 closed in `fluxel-rendering` `v0.8.0` (`800b390`) with the reusable
+Window primitive supplied by `fluxel-host` `v0.1.0` (`e02b736`). The retained
+release evidence records 899 presented DX12 frames, 120 dense client captures
+with a stable visible triangle, clean required validation, and clean shutdown.
 
 **Close when:** the same scene runs continuously on DX12 and Vulkan, survives the
 defined lifecycle sequence, shuts down cleanly, and retains visual,
