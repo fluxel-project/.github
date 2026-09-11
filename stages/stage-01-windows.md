@@ -6,17 +6,19 @@ a general platform API, or an application runtime.
 
 **Owning repository:** `fluxel-rendering`.
 
-**Participating repositories:** none. The temporary Windows window harness is
-part of this repository's rendering proof path; it is not an early
-`fluxel-host` component.
+**Participating repositories:** `fluxel-host` supplies the minimum Win32
+`Window` primitive used by this proof. The temporary executable remains a
+`fluxel-rendering` artifact; this is not an early general Host runtime.
 
 **Artifact under test:** a temporary Windows executable owned by
 `fluxel-rendering` that presents the Stage 1 scene through DX12 and Vulkan.
 
-**Cross-repository contract changes:** none. The harness may pass an opaque
-native surface into the private RHI boundary, but it must not publish a host,
-base, or JS bridge API. Window and surface work in this document establishes
-evidence for rendering only.
+**Cross-repository contract changes:** Host owns fixed-size window creation,
+HWND lifetime, message pumping, close observation, and standard
+window/display-handle traits. Renderer/RHI consumes only those standard traits,
+so rendering does not depend on Host. RHI alone owns native surface,
+swapchain, presentation, and GPU synchronization. This slice excludes input,
+clock, DPI and resize policy, fullscreen, and a general Host runtime.
 
 Use the same demo throughout the stage. Complete a closure before starting the
 next one. A lifetime, validation, or public-contract defect blocks closure.
@@ -27,14 +29,17 @@ Global artifact, diagnostic, and performance requirements are defined in
 
 ### Boundary
 
-- [ ] Create one Windows window and the minimum DX12 surface or swapchain path
-  needed by the demo.
+- [ ] In `fluxel-host`, create the minimum fixed-size Win32 `Window`: creation
+  and destruction, message pump, close request, and standard window/display
+  handles. Do not add Input, Clock, or a general platform API.
+- [ ] In `fluxel-rendering`, use only those standard handles to create the
+  minimum DX12 surface or swapchain path needed by the demo.
 - [ ] Acquire an image, clear it, draw a fixed triangle, present it, and handle
   the close event.
 - [ ] Wait for required GPU work and release resources in a valid shutdown
   order.
-- [ ] Keep window integration in the demo or a narrow host boundary. Do not
-  create a general platform API from this one path.
+- [ ] Keep the reusable window primitive in Host and the proof executable in
+  rendering. Do not create a general platform API from this one path.
 - [ ] Keep HWND, DXGI, queues, fences, descriptors, and all other native types
   inside the RHI native boundary. Renderer and RenderGraph public APIs must not
   gain DX12 variants.
@@ -50,7 +55,10 @@ Global artifact, diagnostic, and performance requirements are defined in
 
 ### Real-target proof
 
-- [ ] Retain a Windows DX12 capture of the presented triangle.
+- [ ] Retain and inspect a Windows DX12 capture of the presented triangle. For
+  continuous frames, retain multiple time-separated captures plus a dense
+  frame sample, readback sequence, or recording sufficient to expose an
+  alternating clear/flicker defect.
 - [ ] Retain adapter, driver, backend, validation, and clean-shutdown
   diagnostics according to the evidence policy.
 

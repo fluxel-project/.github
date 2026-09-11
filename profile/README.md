@@ -17,6 +17,10 @@ advance.
 - A Three-like usability experiment where concepts are adopted only when they
   remain natural, typed Rust APIs.
 - A demo-driven project: the next visible closure decides what must exist next.
+- When that closure exposes a capability belonging to another repository, its
+  owner supplies the smallest complete behavior that the closure immediately
+  consumes and verifies; it is neither copied locally nor expanded into an
+  unproven framework.
 
 ## What Fluxel is not
 
@@ -89,6 +93,12 @@ second GPU certification target.
 **Boundary:** one persistent Windows scene on DX12 and Vulkan. Keep native types
 inside RHI; do not introduce loaders, durable assets, or a public triple-buffer
 API.
+
+`fluxel-host` supplies only the Win32 Window primitive required by this first
+proof (window/HWND lifetime, message pumping, close observation, and standard
+window/display handles). The executable remains in `fluxel-rendering`; RHI owns
+surface, swapchain, presentation, and GPU synchronization, and rendering does
+not depend on Host.
 
 - [ ] Present the first DX12 triangle.
 - [ ] Close resize, minimize, restore, and surface recreation.

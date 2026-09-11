@@ -82,15 +82,21 @@ or a playable runtime.
 
 **Owning repository:** `fluxel-rendering`.
 
-**Participating repositories:** none. A temporary Windows window harness is a
-rendering-owned proof path, not a `fluxel-host` API or artifact.
+**Participating repositories:** `fluxel-host` supplies the deliberately small
+Win32 `Window` primitive used by the proof path. The proof executable and all
+rendering work remain in `fluxel-rendering`; this does not start a general Host
+runtime.
 
 **Artifact under test:** the temporary Windows executable that exercises the
 `fluxel-rendering` DX12 and Vulkan visible-scene path.
 
-**Cross-repository contract changes:** none. The harness may provide the
-opaque native surface required for proof, but it must not establish a Host,
-Base, or JS bridge public contract.
+**Cross-repository contract changes:** `fluxel-host` owns fixed-size window
+creation, HWND lifetime, message pumping, close observation, and standard
+window/display-handle traits. Rendering consumes only those standard traits:
+it must not depend on Host. RHI owns surface creation, swapchain configuration,
+presentation, and GPU synchronization; HWND, DXGI, and COM remain private.
+Input, clock, DPI policy, resize policy, fullscreen, and a Host runtime remain
+out of scope.
 
 **TODO**
 

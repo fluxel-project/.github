@@ -10,6 +10,11 @@ boundary is demonstrated and reviewed. The repository boundary gives the
 capability a stable home so application and AI work do not put it in an
 unrelated layer.
 
+When an active vertical slice exposes a missing capability, it is implemented
+as the owning repository's smallest complete behavior and then consumed by that
+same slice. This prevents caller-local stand-ins without turning a single
+need into an unproven framework.
+
 ## Dependency direction
 
 ```mermaid
@@ -79,7 +84,7 @@ Status has a precise planning meaning:
 | `fluxel-shader` | `fluxel-rendering` | Unscheduled | Shader compilation, reflection, variants, and caching | Shader policy evolves independently from renderer submission |
 | `fluxel-rendering-abi` | `fluxel-rendering` | Unscheduled | Stable native binary packaging for the rendering library | A concrete native embedder requires a versioned rendering boundary |
 | `fluxel-rendering-wasm` | `fluxel-rendering` | Candidate | WASM packaging and exports for the rendering library | Stage 2 requires it for a supported browser and mini-game integration |
-| `fluxel-platform` | `fluxel-host` | Candidate | Application startup, windows, screens, DPI, surfaces, resize, and host lifecycle | Stage 4 proves reusable host lifecycle independent of the demo |
+| `fluxel-platform` | `fluxel-host` | Candidate | Application startup, windows, screens, DPI, resize, and host lifecycle | Stage 4 proves reusable host lifecycle independent of the demo; Stage 1.1 supplies only its minimal Win32 Window primitive |
 | `fluxel-fs` | `fluxel-host` | Unscheduled | Platform file, directory, path, stream, and random-access I/O implementations | A host consumer needs it beyond local internals |
 | `fluxel-storage` | `fluxel-host` | Unscheduled | Platform persistence for key-value data, JSON, blobs, and local storage | A real application requires persistent state on a named host |
 | `fluxel-net` | `fluxel-host` | Unscheduled | Platform HTTP, WebSocket, download, and upload implementations | A real application provides an end-to-end networking consumer |
@@ -110,9 +115,10 @@ Status has a precise planning meaning:
 - Base input and time define portable values and semantics. `fluxel-host` and
   `fluxel-jsbridge` acquire platform events and clocks, then translate them to
   those contracts.
-- `fluxel-platform` owns OS event pumping, windows, surfaces, resize, and host
-  lifecycle. It supplies the native surface handle RHI needs, but RHI owns only
-  the GPU use and lifetime contract of that received handle.
+- `fluxel-platform` owns OS event pumping, windows, resize, and host lifecycle.
+  Its Window supplies standard native window/display handles. RHI creates and
+  owns the native surface, swapchain, presentation, GPU use, and lifetime
+  contract; rendering depends on handle traits, never on Host.
 - `fluxel-rhi` owns native barriers, queues, fences, commands, submission, and
   readback. RHI realizes portable RenderGraph contracts; RenderGraph does not
   import RHI or implement native synchronization.

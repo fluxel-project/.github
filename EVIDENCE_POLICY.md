@@ -67,6 +67,18 @@ capture. Preserve partial output and diagnostics when a run fails.
 
 ## Visual and performance oracles
 
+Any example, visual test, or graphical program that opens a window or produces
+continuous frames requires an inspected real-run screenshot; process survival,
+successful present calls, logs, and clean validation do not prove the image.
+For a static result, retain at least one stable frame. For animation,
+continuous rendering, resize, or another cross-frame path, retain multiple
+separated frames and pair them with a dense readback/frame-marker sample or a
+recording. Review clear color, geometry, dimensions, color, stale contents,
+tearing, alternating frames, and flicker. Identical sparse screenshots do not
+by themselves rule out intermittent clears. Every visual artifact records its
+exact commit, backend, GPU and driver, window size, frame number or timestamp,
+and validation diagnostics.
+
 Use an exact image hash when output is stable. Otherwise freeze the tolerance,
 mask, input, and review procedure before treating a visual difference as a
 pass or failure. Text rasterization and backend differences do not justify an

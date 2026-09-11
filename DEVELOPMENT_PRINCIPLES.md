@@ -58,6 +58,11 @@ after Canvas, text, input, and host lifecycles are proven.
   but does not authorize extraction or change roadmap order.
 - Reuse and extend the current demo. Extract a crate only after the vertical
   slice demonstrates an independently changing responsibility.
+- When a real vertical slice discovers a missing capability owned by another
+  repository, implement that owner's smallest complete behavior and make the
+  current slice actually consume and verify it. Do not duplicate a temporary
+  substitute in the caller, and do not use the discovery to start the owner's
+  unneeded future framework.
 - Do not broaden a public API for a hypothetical target. Record the missing
   case and wait for a stage that can prove it on that target.
 - Optimize only after a representative baseline and profile identify a concrete
@@ -77,6 +82,10 @@ after Canvas, text, input, and host lifecycles are proven.
   and surface handling, input and time acquisition, filesystem, storage,
   networking, audio, video, native diagnostic sinks, and executable packaging.
   It may depend on rendering and bases; neither may depend on host.
+- A host window supplies standard window/display handles; rendering may accept
+  those traits from Host, winit, SDL, or another provider but never imports
+  Host. RHI owns the native surface, swapchain, presentation, and GPU
+  synchronization derived from the handle.
 - `fluxel-jsbridge` owns the default JavaScript SDK plus browser, mini-game, and
   native adapters. It composes lower contracts for developers without becoming
   their semantic authority.
