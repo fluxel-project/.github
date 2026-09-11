@@ -1,8 +1,22 @@
 # Stage 1 — Windows visible renderer
 
 Build one durable Windows scene before broadening the runtime. This stage
-extends the Stage 0 baseline; it does not establish `fluxel-assets`,
-`fluxel-loader`, a general `fluxel-platform` API, or `fluxel-runtime`.
+extends the Stage 0 baseline; it does not establish asset or loader contracts,
+a general platform API, or an application runtime.
+
+**Owning repository:** `fluxel-rendering`.
+
+**Participating repositories:** none. The temporary Windows window harness is
+part of this repository's rendering proof path; it is not an early
+`fluxel-host` component.
+
+**Artifact under test:** a temporary Windows executable owned by
+`fluxel-rendering` that presents the Stage 1 scene through DX12 and Vulkan.
+
+**Cross-repository contract changes:** none. The harness may pass an opaque
+native surface into the private RHI boundary, but it must not publish a host,
+base, or JS bridge API. Window and surface work in this document establishes
+evidence for rendering only.
 
 Use the same demo throughout the stage. Complete a closure before starting the
 next one. A lifetime, validation, or public-contract defect blocks closure.

@@ -26,9 +26,20 @@ extend fixed rendering recipes in this stage.
 surface API, multi-frame API, scene model, loader, asset manager, or runtime
 crate belongs here.
 
+**Owning repository:** `fluxel-rendering`.
+
+**Participating repositories:** none.
+
+**Artifact under test:** the `fluxel-rendering` headless conformance and
+release artifacts for the existing vertical slice.
+
+**Cross-repository contract changes:** none. This stage freezes and proves the
+existing rendering boundary; it does not create a `fluxel-bases` dependency or
+any Host or JS bridge contract.
+
 **Status:** In progress.
 
-**Latest retained evidence:** [`fluxel-renderer` v0.7.0](https://github.com/fluxel-project/fluxel-renderer/releases/tag/v0.7.0),
+**Latest retained evidence:** [`fluxel-rendering` v0.7.0](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.7.0),
 tag commit `6bd3a25`. Its retained `manifest.json` and `cargo.log` record Windows
 `x86_64-pc-windows-msvc` on AMD Radeon 780M Graphics, with 83/83 ignored
 real-GPU cases passing across DX12 and Vulkan and no validation diagnostics
@@ -68,6 +79,18 @@ boundaries, and evidence for this stage are in
 stage proves a visible renderer, not assets, loading, a general platform API,
 or a playable runtime.
 
+**Owning repository:** `fluxel-rendering`.
+
+**Participating repositories:** none. A temporary Windows window harness is a
+rendering-owned proof path, not a `fluxel-host` API or artifact.
+
+**Artifact under test:** the temporary Windows executable that exercises the
+`fluxel-rendering` DX12 and Vulkan visible-scene path.
+
+**Cross-repository contract changes:** none. The harness may provide the
+opaque native surface required for proof, but it must not establish a Host,
+Base, or JS bridge public contract.
+
 **TODO**
 
 - [ ] 1.1 DX12 first image: create a window and surface, clear, draw a fixed
@@ -95,6 +118,18 @@ mini-game host in the stage plan before implementation.
 Do not claim generic web or mini-game support, redesign native APIs around web
 global state, or use browser evidence for the host device.
 
+**Owning repository:** `fluxel-rendering`.
+
+**Participating repositories:** `fluxel-jsbridge`.
+
+**Artifact under test:** the rendering WASM package plus the named browser and
+one named mini-game integration package, each run on its real target.
+
+**Cross-repository contract changes:** define only the narrow rendering-to-JS
+bridge needed to start, resize, submit the preserved scene, and report
+structured diagnostics. Platform APIs remain owned by their adapters; neither
+repository gains a generic host contract.
+
 **TODO**
 
 - [ ] 2.1 WebGL2: canvas creation and resize, multi-object rendering,
@@ -120,6 +155,18 @@ Fluxel-native `Scene`, `Camera`, `Mesh`, `Geometry`, `Material`, and
 **Boundary:** Rust owns the semantics. This validates a small object model; it
 does not create a complete scene framework, a Three.js backend, or a JavaScript
 source of truth.
+
+**Owning repository:** `fluxel-rendering`.
+
+**Participating repositories:** `fluxel-jsbridge`.
+
+**Artifact under test:** the same experimental scene rendered by the
+`fluxel-rendering` DX12 executable and the JS-bridge WebGL2 integration.
+
+**Cross-repository contract changes:** expose the experimental Rust scene
+concepts through a thin, replaceable JS bridge only as needed by the example.
+Rust remains the semantic authority; no Three.js compatibility or independent
+JS scene contract is created.
 
 ### Stage 3A — Low-cost API probe
 
@@ -160,13 +207,27 @@ and will not create `threejs-native`.
 ## Stage 4 — Windows playable runtime
 
 Extend the existing multi-object scene into a small long-running Windows
-application. Create `fluxel-platform`, `fluxel-time`, `fluxel-input`,
-`fluxel-loader`, `fluxel-assets`, and `fluxel-runtime` only when the following
-work demonstrates their separate ownership.
+application. Introduce internal platform, time, input, loader, asset, and
+application-composition boundaries in their owning repositories only when the
+following work demonstrates their separate ownership.
 
 **Boundary:** Windows playable runtime only. Create boundaries on demonstrated
 need, not because they appear in the layer map. Do not add networking, storage,
 audio, ECS, editors, general scripting, or a broad file-format framework.
+
+**Owning repository:** `fluxel-host`.
+
+**Participating repositories:** `fluxel-bases`, `fluxel-rendering`, and
+`fluxel-jsbridge`.
+
+**Artifact under test:** the Windows EXE produced by `fluxel-host`, linked to
+the selected rendering artifact and exercised as one sustained application.
+
+**Cross-repository contract changes:** introduce only contracts demonstrated by
+the application: Base ownership and diagnostic types where shared, Host-driven
+surface and frame calls into Rendering, and a narrow native JS bridge if the
+application uses one. Rendering does not acquire host lifecycle, I/O, input,
+or process ownership.
 
 **TODO**
 
@@ -195,6 +256,19 @@ experiment.
 **Boundary:** port the existing application and preserve its semantics. Do not
 make a mobile-only renderer demo, infer support on one platform from the other,
 or block a separately planned Canvas slice on unavailable mobile hardware.
+
+**Owning repository:** `fluxel-host`.
+
+**Participating repositories:** `fluxel-bases`, `fluxel-rendering`, and
+`fluxel-jsbridge`.
+
+**Artifact under test:** the Android APK/AAB and iOS IPA produced by
+`fluxel-host`; each is an independent real-device application artifact.
+
+**Cross-repository contract changes:** preserve the Stage 4 contracts while
+adding only platform-specific Host lifecycle and surface mappings. Any shared
+identity, diagnostic, capability, or bridge representation belongs in its
+owning repository; mobile support must not leak OS objects into Rendering.
 
 ### Stage 5A — Android
 
@@ -228,6 +302,19 @@ actual target matrix before implementation.
 manager, and UI system. Extract `fluxel-canvas` only if the demo proves that
 independent ownership boundary. Text is intentionally minimal.
 
+**Owning repository:** `fluxel-rendering`.
+
+**Participating repositories:** `fluxel-bases` and `fluxel-jsbridge`.
+
+**Artifact under test:** the selected-target Canvas demo built from the
+`fluxel-rendering` artifact, with its JS bridge integration where that target
+uses one.
+
+**Cross-repository contract changes:** add only demonstrated Canvas/text data,
+render-resource identity, and structured diagnostics contracts. Base retains
+shared mechanisms, while JS bridge bindings are adapters rather than a second
+Canvas semantic authority; no platform-loop or UI-system API is introduced.
+
 **TODO**
 
 - [ ] Add images or sprites, 2D transforms, rectangular clipping, alpha
@@ -254,6 +341,23 @@ text, and input. Start from the screen's real requirements.
 **Boundary:** ship one concrete screen and reuse existing lifecycle systems.
 Do not create a general UI framework, virtual DOM, CSS system, or Vue
 compatibility layer.
+
+**Owning repository:** `fluxel-rendering`. The UI closure extends the existing
+Canvas and text path with one purpose-built screen; it does not make a language
+adapter the authority for UI or rendering semantics.
+
+**Participating repositories:** `fluxel-bases`, `fluxel-jsbridge`, and
+`fluxel-host`.
+
+**Artifact under test:** the selected HUD or settings-screen demo from
+`fluxel-rendering`, running through its declared JS bridge adapter and host
+where those repositories participate in the selected target.
+
+**Cross-repository contract changes:** define only the screen's needed bridge
+for input delivery, state updates, Canvas/text commands, lifecycle teardown,
+and structured diagnostics. Host continues to own platform events, Rendering
+continues to own drawing and resource lifetime, and Base holds only genuinely
+shared mechanism types.
 
 **TODO**
 

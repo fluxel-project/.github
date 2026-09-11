@@ -1,8 +1,8 @@
 # Fluxel Ecosystem
 
 Fluxel is a native-first, Three-like, AI-friendly lightweight rendering
-runtime. “Three-like” describes approachable scene concepts, not Three.js API
-compatibility. Rust and native runtime behavior are authoritative. Development
+ecosystem. “Three-like” describes approachable scene concepts, not Three.js API
+compatibility. Rust rendering and host contracts are authoritative. Development
 follows visible demo closure rather than completing architectural layers in
 advance.
 
@@ -11,7 +11,8 @@ advance.
 
 ## What Fluxel is
 
-- A focused Rust rendering runtime built from libraries with explicit ownership.
+- Four focused monorepositories with explicit, one-way ownership:
+  `fluxel-bases`, `fluxel-rendering`, `fluxel-host`, and `fluxel-jsbridge`.
 - A portable design proven by real DX12, Vulkan, WebGL2, WebGPU, and platform
   evidence as those targets enter the roadmap.
 - A Three-like usability experiment where concepts are adopted only when they
@@ -23,31 +24,37 @@ advance.
 - Not a Three.js backend, a 100% Three.js compatibility layer, or
   `threejs-native`.
 - Not a Vue, DOM, or CSS compatibility layer, and not `vue-native`.
-- Not a plan to create every named library before a running demo needs it.
+- Not a plan to create every candidate crate before a running demo needs it.
 - Not a place where compile, mock, or `TestRhi` results are presented as
   real-device correctness.
 
 ## Layer map
 
-Layer ownership determines where code belongs. It does not determine development
-order. Names that do not yet have a demonstrated implementation need are
-candidate boundaries, not instructions to create repositories. The complete
-library and dependency map is in
-[Ecosystem architecture](https://github.com/fluxel-project/.github/blob/main/ECOSYSTEM_ARCHITECTURE.md).
+Repository ownership determines where code belongs. It does not determine
+development order; candidate crates are extracted only when a demonstrated
+consumer proves their independent boundary. The complete ownership and
+dependency map is in [Ecosystem architecture](https://github.com/fluxel-project/.github/blob/main/ECOSYSTEM_ARCHITECTURE.md).
 
-- **Foundation and host:** base, time, filesystem, storage, networking, input,
-  image, audio, and platform lifecycle are candidate boundaries extracted only
-  from a staged demo with an end-to-end consumer.
-- **Resources:** `fluxel-loader` obtains and decodes CPU data;
-  `fluxel-assets` owns durable identity, typed handles, generations, residency,
-  reuse, and safe release.
-- **GPU:** `fluxel-rhi` owns native backend realization;
-  `fluxel-rendergraph` owns portable single-frame declarations, plans, and
-  validation; `fluxel-renderer` owns 3D submission, ordering, and lowering.
-  Canvas and shader tooling remain candidate boundaries.
-- **Runtime and higher layers:** runtime composition, ABI packaging, JavaScript
-  VM and bridge layers, a JS API, and purpose-built declarative UI appear only
-  after a demonstrated application or embedding need.
+- **`fluxel-bases`:** the dependency leaf for cross-platform mechanisms and
+  contracts. It owns small shared types, asset identity and lifecycle, loading
+  policy, portable time/input values, image data, and diagnostic schema/routing;
+  it does not own GPU resources, platform I/O, or output sinks.
+- **`fluxel-rendering`:** embeddable GPU and rendering libraries: RHI,
+  RenderGraph, renderer submission, rendering-side asset residency, Canvas,
+  UI, shaders, and native/WASM packaging. It has no main loop, platform I/O,
+  input collection, audio, video, or storage.
+- **`fluxel-host`:** native platform implementation and executable host:
+  lifecycle, windows and surfaces, platform I/O, input/time acquisition,
+  audio/video, native diagnostic sinks, and EXE, APK/AAB, or IPA packaging. It
+  may depend on bases and rendering.
+- **`fluxel-jsbridge`:** the default JS SDK with browser, mini-game, and native
+  adapters. It composes lower APIs into a uniform developer experience, but JS
+  is replaceable by SDKs in other languages and does not define core semantics.
+
+The permitted dependency direction is `fluxel-host -> fluxel-rendering ->
+fluxel-bases`, with `fluxel-jsbridge` depending on rendering WASM and/or host
+APIs. `fluxel-bases` never depends upward; rendering never depends on host or
+the JS SDK.
 
 ## Development stages
 
@@ -63,7 +70,7 @@ new fixed recipes, assets, loaders, or runtime composition.
 
 **Status:** In progress.
 
-**Latest retained evidence:** [`fluxel-renderer` v0.7.0](https://github.com/fluxel-project/fluxel-renderer/releases/tag/v0.7.0),
+**Latest retained evidence:** [`fluxel-rendering` v0.7.0](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.7.0),
 with 83/83 ignored real-GPU cases passing on AMD Radeon 780M Graphics across
 DX12 and Vulkan.
 

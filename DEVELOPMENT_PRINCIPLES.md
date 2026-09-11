@@ -1,8 +1,9 @@
 # Fluxel Development Principles
 
-These principles govern the ecosystem and its repositories. They are stable
-decision rules, not a release schedule or a promise to create every named
-library.
+These principles govern the Fluxel ecosystem and its four monorepositories:
+`fluxel-bases`, `fluxel-rendering`, `fluxel-host`, and `fluxel-jsbridge`. They
+are stable decision rules, not a release schedule or a promise to create every
+named crate.
 
 Fluxel is a native-first, Three-like, AI-friendly lightweight rendering
 runtime. “Three-like” describes approachable scene concepts, not Three.js API
@@ -10,9 +11,9 @@ compatibility.
 
 ## Native-first semantics
 
-- Rust APIs and native runtime behavior are authoritative. JavaScript, WASM,
-  FFI, and declarative UI layers adapt those semantics; they do not define the
-  renderer or runtime core.
+- Rust rendering and host contracts are authoritative. JavaScript, WASM, FFI,
+  and declarative UI layers adapt those contracts; they do not define renderer
+  or host core semantics.
 - Native-first does not mean desktop-only. Portable behavior is proved on each
   target, while backend-specific objects remain behind native boundaries.
 - Prefer explicit ownership, borrowing, typed handles, lifecycle states, and
@@ -31,29 +32,30 @@ performance workload. It is not a compatibility target.
   adopted only when they are natural Rust concepts.
 - Three.js inheritance, plugin contracts, implicit global state, material
   breadth, and `Three*` compatibility types must not enter the native core.
-- A future JS or TS facade must remain removable and replaceable. Compatibility
-  work requires an explicit new decision; it cannot be inferred from
-  “Three-like.”
+- The JavaScript SDK is replaceable: Rust, C#, Lua, or another language may
+  provide an SDK over the same lower contracts. Compatibility work requires an
+  explicit new decision; it cannot be inferred from “Three-like.”
 
 ## Purpose-built UI, not Vue-native
 
 Fluxel UI grows from demonstrated HUD, settings, and application-screen needs
-after Canvas, text, input, and runtime lifecycles are proven.
+after Canvas, text, input, and host lifecycles are proven.
 
 - Fluxel does not target Vue, DOM, or CSS compatibility.
 - Fluxel will not build a `vue-native` clone.
 - Templates, reactivity, component lifecycles, and plugin behavior are not
   native-core contracts.
-- Declarative ideas may be studied later, but any retained or declarative
-  surface follows Fluxel ownership and resource-lifetime semantics.
+- Declarative ideas may be studied later, but any retained surface follows
+  Fluxel ownership and resource-lifetime semantics.
 
 ## Demo-driven scope and ownership
 
 - The next visible, testable demo closure determines implementation order.
-  Layering determines code ownership, not when a crate must exist.
-- [ECOSYSTEM_ARCHITECTURE.md](ECOSYSTEM_ARCHITECTURE.md) is the expected
-  ownership and dependency map. It reserves candidate boundaries but does not
-  authorize repository creation or change roadmap order.
+  Repository ownership determines where code belongs, not when a crate must
+  exist.
+- [ECOSYSTEM_ARCHITECTURE.md](ECOSYSTEM_ARCHITECTURE.md) assigns each capability
+  to one of the four monorepositories. It reserves candidate crate boundaries
+  but does not authorize extraction or change roadmap order.
 - Reuse and extend the current demo. Extract a crate only after the vertical
   slice demonstrates an independently changing responsibility.
 - Do not broaden a public API for a hypothetical target. Record the missing
@@ -63,17 +65,24 @@ after Canvas, text, input, and runtime lifecycles are proven.
 
 ## Ownership boundaries
 
-- `fluxel-rhi` owns native GPU objects, barriers, commands, submission,
-  readback, and backend realization.
-- `fluxel-rendergraph` owns declarations, resource dependencies, logical
-  synchronization requirements, portable execution plans, and validation. It
-  does not own native synchronization realization.
-- `fluxel-renderer` owns 3D submission, ordering, grouping, and lowering to
-  RenderGraph. It consumes prepared resources and does not own durable asset
-  identity or host lifecycle.
-- `fluxel-loader` obtains and decodes CPU data. `fluxel-assets` owns identity,
-  typed handles, generations, cross-frame references, residency, reuse, and
-  safe release.
+- `fluxel-bases` is the dependency leaf. It holds shared mechanisms and
+  contracts, including asset identity and lifecycle plus diagnostic schema and
+  routing, but never platform implementations, GPU objects, or application
+  policy.
+- `fluxel-rendering` owns RHI, RenderGraph, renderer submission, rendering-side
+  asset residency, Canvas, UI, shaders, and native/WASM rendering packaging. It
+  has no main loop, I/O, input collection, storage, networking, audio, or
+  video.
+- `fluxel-host` owns native platform lifecycle and implementations for window
+  and surface handling, input and time acquisition, filesystem, storage,
+  networking, audio, video, native diagnostic sinks, and executable packaging.
+  It may depend on rendering and bases; neither may depend on host.
+- `fluxel-jsbridge` owns the default JavaScript SDK plus browser, mini-game, and
+  native adapters. It composes lower contracts for developers without becoming
+  their semantic authority.
+- Shared assets and logs remain split by responsibility: bases owns asset
+  identity and diagnostic records; rendering owns GPU residency; host and JS
+  adapters own platform reads and diagnostic sinks.
 
 ## AI-friendly engineering
 
@@ -89,8 +98,8 @@ after Canvas, text, input, and runtime lifecycles are proven.
 - Use the same terms and operation order in code, demos, tests, diagnostics,
   and documentation. Rename consistently instead of retaining speculative
   compatibility aliases.
-- Each participating repository should provide local `AGENTS.md` guidance for
-  ownership, normal edit locations, focused verification commands, and required
+- Each repository should provide local `AGENTS.md` guidance for ownership,
+  normal edit locations, focused verification commands, and required
   real-target evidence.
 
 ## Delivery discipline
