@@ -5,7 +5,7 @@ runtime. “Three-like” describes approachable scene concepts, not Three.js AP
 compatibility. This is an execution map, not a release schedule or a promise
 to create every named crate.
 
-**Current target:** reproducible baseline, then the first visible DX12 window.
+**Current target:** the first visible DX12 window.
 
 Development follows the next visible demo closure, not the layer map. Reuse
 and extend one scene and application wherever possible. Extract a crate only
@@ -37,7 +37,7 @@ release artifacts for the existing vertical slice.
 existing rendering boundary; it does not create a `fluxel-bases` dependency or
 any Host or JS bridge contract.
 
-**Status:** In progress.
+**Status:** Complete.
 
 **Latest retained evidence:** [`fluxel-rendering` v0.7.0](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.7.0),
 tag commit `6bd3a25`. Its retained `manifest.json` and `cargo.log` record Windows
@@ -62,12 +62,13 @@ observed.
       RHI; keep RenderGraph portable and declarative.
 - [x] Freeze the `draw_*` recipe family and public upload-state types for Stage
       0; additions require reopening the stage plan.
-- [ ] Re-run the complete baseline on the final fixed Stage 0 commit and retain
-      the verified Release artifacts.
+- [x] Retain the complete baseline on the final fixed Stage 0 source commit.
 
-**Close when:** the final fixed Stage 0 commit reproduces documented CPU, CI,
-and retained real-GPU evidence. The v0.7.0 evidence is the latest baseline, not
-automatic closure for a later commit.
+**Closure:** `v0.7.0` / `6bd3a25` is the final fixed Stage 0 source and evidence
+commit. The following repository-alignment commits changed documentation only;
+they did not change Cargo manifests, Rust sources, examples, CI, the conformance
+gate, or the released GPU behavior, and therefore do not define a second GPU
+certification target.
 
 ## Stage 1 — Windows visible renderer
 
@@ -96,14 +97,20 @@ Base, or JS bridge public contract.
 - [ ] 1.1 DX12 first image: create a window and surface, clear, draw a fixed
       triangle, present, close cleanly, and release in a valid order.
 - [ ] 1.2 Surface lifecycle: handle resize, minimize, restore, invalid sizes,
-      recreation, and structured surface or device failures.
-- [ ] 1.3 Multi-frame lifetime: prove safe reuse with three frames in flight
-      by default without exposing a triple-buffer API.
+      recreation, and structured surface or device failures. A new surface
+      generation stops acquisition from the old generation but does not release
+      its presentable resources until every GPU reference reaches known completion.
+- [ ] 1.3 Multi-frame lifetime: prove bounded frames-in-flight resource reuse,
+      completion-driven retirement, and back pressure. The Windows demo uses
+      `N=3` by default without exposing that policy as a triple-buffer API.
 - [ ] 1.4 Vulkan alignment: run the same scene and lifecycle contract on
       Windows Vulkan.
 - [ ] 1.5 Minimal multi-object scene: add a camera, meshes, materials,
       independent transforms, deterministic order, and minimal reuse of
-      compatible pipelines and bindings.
+      compatible pipelines and bindings. Adopt `slot-graph` only after this
+      scene naturally demonstrates at least one real CPU-preparation dependency
+      DAG; do not invent tasks merely to integrate it. RenderGraph retains GPU-
+      resource semantics and `slot-graph` types remain private.
 
 **Close when:** the same scene runs continuously on DX12 and Vulkan, survives the
 defined lifecycle sequence, shuts down cleanly, and retains visual,
@@ -233,6 +240,9 @@ or process ownership.
 
 - [ ] Add a host loop with startup, frame, pause, resume, close, shutdown,
       delta time, and fixed-update behavior.
+- [ ] Adopt `async-runtime` as the host-owned native scheduler: the host owns
+      worker shutdown and drives owner-thread local domains within an explicit
+      frame budget; rendering and RenderGraph do not acquire runtime policy.
 - [ ] Add only the required input, file or memory loading, mesh and image
       decoding, and camera or game control.
 - [ ] Establish typed handles, generations, reuse, CPU/GPU residency, and

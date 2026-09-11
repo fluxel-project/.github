@@ -6,8 +6,7 @@ compatibility. Rust rendering and host contracts are authoritative. Development
 follows visible demo closure rather than completing architectural layers in
 advance.
 
-> **Current target:** close the reproducible headless baseline, then present the
-> first DX12 image in a Windows window.
+> **Current target:** present the first DX12 image in a Windows window.
 
 ## What Fluxel is
 
@@ -68,7 +67,7 @@ increases; that coarseness is not permission to exceed the stated boundary.
 **Boundary:** close the current headless slice. Do not add windows, scene APIs,
 new fixed recipes, assets, loaders, or runtime composition.
 
-**Status:** In progress.
+**Status:** Complete.
 
 **Latest retained evidence:** [`fluxel-rendering` v0.7.0](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.7.0),
 with 83/83 ignored real-GPU cases passing on AMD Radeon 780M Graphics across
@@ -79,7 +78,11 @@ DX12 and Vulkan.
 - [x] Make CPU, CI, and real-GPU conformance evidence reproducible.
 - [x] Audit RenderGraph public exports.
 - [x] Freeze new `draw_*` recipes and upload-state types.
-- [ ] Re-run and retain the complete baseline on the final Stage 0 commit.
+- [x] Retain the complete baseline on the final Stage 0 source commit.
+
+`v0.7.0` / `6bd3a25` is the fixed source and evidence commit. Later
+repository-alignment commits changed documentation only and do not define a
+second GPU certification target.
 
 ### Stage 1 — Windows visible renderer
 

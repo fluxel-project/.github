@@ -68,6 +68,10 @@ Global artifact, diagnostic, and performance requirements are defined in
   as distinct host events.
 - [ ] Do not acquire or submit a drawable frame while size is invalid.
 - [ ] Recreate required surface resources after a valid size returns.
+- [ ] Assign each recreated surface state a generation. Recreation stops new
+      acquisition from the old generation but does not make its presentable
+      resources releasable; retire that generation only after every GPU
+      reference has reached known completion.
 - [ ] Define which resources survive resize and which retire before
   replacement; never overwrite or destroy GPU-in-use swapchain state.
 - [ ] Preserve structured, diagnosable device, surface, acquisition, and
@@ -92,12 +96,13 @@ Global artifact, diagnostic, and performance requirements are defined in
 - [ ] Close only when the sequence completes without unexplained validation
   errors or submission at invalid size.
 
-## 1.3 — Private multi-frame lifetime
+## 1.3 — Private bounded frames-in-flight lifetime
 
 ### Boundary
 
-- [ ] Validate three frames in flight by default, while keeping this count and
-  every ring slot, fence value, and native synchronization object private.
+- [ ] Validate a bounded maximum `N` frames in flight, with `N=3` as the Windows
+      demo default, while keeping the count, every ring slot, fence value, and
+      native synchronization object private.
 - [ ] Limit public semantics to frame acquisition, frame submission,
   completion observation, and retirement.
 - [ ] Associate transient allocations, uploads, descriptors, and reused frame
@@ -114,7 +119,10 @@ Global artifact, diagnostic, and performance requirements are defined in
 - [ ] Verify the portable lifecycle state machine without exposing DX12
   synchronization mechanics.
 - [ ] Verify reuse is deferred until the completion associated with that reuse
-  is observed.
+      is observed.
+- [ ] Artificially delay GPU completion, submit until all `N` slots are live,
+      assert the next frame is constrained by back pressure, then observe one
+      completion and prove only its corresponding slot becomes reusable.
 
 ### Real-target proof
 
@@ -168,7 +176,11 @@ Global artifact, diagnostic, and performance requirements are defined in
   multiple materials, and an independent transform for each object.
 - [ ] Define deterministic draw order for identical input.
 - [ ] Reuse compatible pipelines and bindings, without promising general
-  batching, instancing, visibility, or optimization APIs.
+      batching, instancing, visibility, or optimization APIs.
+- [ ] Adopt `slot-graph` only if the completed scene naturally exposes at least
+      one real CPU-preparation dependency DAG. Do not create artificial tasks
+      to justify the dependency; keep its types behind renderer-owned prepared
+      data and outside GPU synchronization.
 - [ ] Use embedded or generated resources. Loader behavior and durable asset
   identity remain out of scope until the runtime stage.
 - [ ] Keep ordinary scene construction above RHI and RenderGraph. A mesh,

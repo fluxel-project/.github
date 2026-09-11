@@ -31,6 +31,27 @@ lower layers must not import higher-level policy.
 semantic authority. A Rust, C#, Lua, or other language SDK may use the same
 lower contracts without making JavaScript a dependency of those repositories.
 
+## Adopted general-purpose dependencies
+
+Fluxel reuses two independently released Moore-Sky libraries. They remain
+general-purpose upstream projects outside the four Fluxel ownership
+repositories; adoption does not permit them to depend on Fluxel or to redefine
+Fluxel layer semantics.
+
+- [`slot-graph`](https://github.com/Moore-Sky/slot-graph) supplies typed CPU task
+  dependency execution for renderer preparation once Stage 1.5 demonstrates
+  that DAG. It does not replace `fluxel-rendergraph`: GPU resource hazards,
+  states, passes, submission, completion, and native lifetime remain in
+  RenderGraph and RHI.
+- [`async-runtime`](https://github.com/Moore-Sky/async-runtime) supplies the
+  native host-owned priority-aware scheduler once the playable host requires
+  it. The host owns worker and local-domain driving and shutdown; it does not
+  leak runtime policy into RHI, RenderGraph, renderer public APIs, or WASM.
+
+Fluxel dependencies pin reviewed releases and exact revisions. Local sibling
+paths may be used as developer overrides, but published manifests and lockfiles
+must remain reproducible.
+
 ## Library boundaries
 
 Status has a precise planning meaning:
