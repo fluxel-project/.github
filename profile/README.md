@@ -6,7 +6,8 @@ compatibility. Rust rendering and host contracts are authoritative. Development
 follows visible demo closure rather than completing architectural layers in
 advance.
 
-> **Current target:** prove bounded frames-in-flight lifetime and back pressure on DX12.
+> **Current target:** scope Stage 2 around the retained Stage 1 scene, named real
+> web targets, and exactly one named mini-game host before implementation.
 
 ## What Fluxel is
 
@@ -105,10 +106,15 @@ not depend on Host.
 - [x] Close resize, minimize, restore, and surface recreation
   (`fluxel-rendering` `v0.8.1`; generations 1–4, 120 timestamped samples / 240
   screenshots, clean validation and shutdown; `fluxel-host` `v0.2.0`).
-- [ ] Prove private multi-frame acquisition, submission, completion, and
+- [x] Prove private multi-frame acquisition, submission, completion, and
   retirement.
-- [ ] Align the same demo on Windows Vulkan.
-- [ ] Render the minimal deterministic multi-object scene.
+- [x] Align the same demo on Windows Vulkan.
+- [x] Render the minimal deterministic multi-object scene, including a private
+  real renderer CPU-preparation DAG through `slot-graph`.
+
+Stage 1 closed in [`fluxel-rendering` `v0.8.3`](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.8.3)
+at `1778226fb74d3fc0f2fdb12b6dd8da9d9d149960`; its durable
+`fluxel-rendering-v0.8.3-evidence.zip` binds the cross-backend evidence.
 
 See the [Stage 1 execution guide](https://github.com/fluxel-project/.github/blob/main/stages/stage-01-windows.md).
 

@@ -5,7 +5,8 @@ runtime. “Three-like” describes approachable scene concepts, not Three.js AP
 compatibility. This is an execution map, not a release schedule or a promise
 to create every named crate.
 
-**Current target:** the first visible DX12 window.
+**Current target:** scope Stage 2 around the retained Stage 1 scene, named real
+web targets, and exactly one named mini-game host before implementation.
 
 Development follows the next visible demo closure, not the layer map. Reuse
 and extend one scene and application wherever possible. Extract a crate only
@@ -98,6 +99,8 @@ presentation, and GPU synchronization; HWND, DXGI, and COM remain private.
 Input, clock, DPI policy, resize policy, fullscreen, and a Host runtime remain
 out of scope.
 
+**Status:** Complete.
+
 **TODO**
 
 - [x] 1.1 DX12 first image: create a window and surface, clear, draw a fixed
@@ -106,17 +109,16 @@ out of scope.
       recreation, and structured surface or device failures. A new surface
       generation stops acquisition from the old generation but does not release
       its presentable resources until every GPU reference reaches known completion.
-- [ ] 1.3 Multi-frame lifetime: prove bounded frames-in-flight resource reuse,
+- [x] 1.3 Multi-frame lifetime: prove bounded frames-in-flight resource reuse,
       completion-driven retirement, and back pressure. The Windows demo uses
       `N=3` by default without exposing that policy as a triple-buffer API.
-- [ ] 1.4 Vulkan alignment: run the same scene and lifecycle contract on
-      Windows Vulkan.
-- [ ] 1.5 Minimal multi-object scene: add a camera, meshes, materials,
-      independent transforms, deterministic order, and minimal reuse of
-      compatible pipelines and bindings. Adopt `slot-graph` only after this
-      scene naturally demonstrates at least one real CPU-preparation dependency
-      DAG; do not invent tasks merely to integrate it. RenderGraph retains GPU-
-      resource semantics and `slot-graph` types remain private.
+- [x] 1.4 Vulkan alignment: the shared Windows presentation path runs on Vulkan
+      under the same lifecycle contract as DX12.
+- [x] 1.5 Minimal multi-object scene: deterministic
+      multi-object preparation and draw submission, with private `slot-graph`
+      use only for a naturally occurring renderer CPU-preparation DAG. RenderGraph retains GPU-resource
+      semantics; `slot-graph` neither owns GPU synchronization nor escapes the
+      renderer boundary.
 
 Stage 1.1 closed in `fluxel-rendering` `v0.8.0` (`800b390`) with the reusable
 Window primitive supplied by `fluxel-host` `v0.1.0` (`e02b736`). The retained
@@ -131,6 +133,11 @@ evidence records generations 1–4 across resize, minimize, restore, and close,
 5161 presented frames, 191 suspended iterations, 120 timestamped samples / 240
 screenshots, clean validation, and clean shutdown. Reviewers opened samples at
 each boundary and found the expected stable black clear and blue triangle.
+
+Stage 1 closed in [`fluxel-rendering` `v0.8.3`](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.8.3)
+at `1778226fb74d3fc0f2fdb12b6dd8da9d9d149960`. The Release's durable
+`fluxel-rendering-v0.8.3-evidence.zip` binds the final DX12/Vulkan conformance,
+visual, lifecycle, and diagnostic evidence to that source commit.
 
 **Close when:** the same scene runs continuously on DX12 and Vulkan, survives the
 defined lifecycle sequence, shuts down cleanly, and retains visual,

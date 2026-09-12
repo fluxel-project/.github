@@ -128,110 +128,120 @@ frames. Validation, close, and shutdown were clean.
 
 ### Boundary
 
-- [ ] Validate a bounded maximum `N` frames in flight, with `N=3` as the Windows
+- [x] Validate a bounded maximum `N` frames in flight, with `N=3` as the Windows
       demo default, while keeping the count, every ring slot, fence value, and
       native synchronization object private.
-- [ ] Limit public semantics to frame acquisition, frame submission,
+- [x] Limit public semantics to frame acquisition, frame submission,
   completion observation, and retirement.
-- [ ] Associate transient allocations, uploads, descriptors, and reused frame
+- [x] Associate transient allocations, uploads, descriptors, and reused frame
   resources with the completion that makes reuse safe.
-- [ ] Prevent the CPU from overwriting data referenced by unfinished GPU work.
-- [ ] When the GPU falls behind, wait or throttle at a documented boundary.
+- [x] Prevent the CPU from overwriting data referenced by unfinished GPU work.
+- [x] When the GPU falls behind, wait or throttle at a documented boundary.
   Do not grow allocations without limit, silently collapse to one frame, or
   depend on driver serialization.
 
 ### Focused checks
 
-- [ ] Test normal progress, delayed completion, back pressure, shutdown with
+- [x] Test normal progress, delayed completion, back pressure, shutdown with
   outstanding work, and relevant failure paths.
-- [ ] Verify the portable lifecycle state machine without exposing DX12
+- [x] Verify the portable lifecycle state machine without exposing DX12
   synchronization mechanics.
-- [ ] Verify reuse is deferred until the completion associated with that reuse
+- [x] Verify reuse is deferred until the completion associated with that reuse
       is observed.
-- [ ] Artificially delay GPU completion, submit until all `N` slots are live,
+- [x] Artificially delay GPU completion, submit until all `N` slots are live,
       assert the next frame is constrained by back pressure, then observe one
       completion and prove only its corresponding slot becomes reusable.
 
 ### Real-target proof
 
-- [ ] Run DX12 continuously with at least three reusable frame contexts cycling
+- [x] Run DX12 continuously with at least three reusable frame contexts cycling
   under induced or observed GPU lag.
-- [ ] Retain frame-lifetime diagnostics showing completion, retirement, and
+- [x] Retain frame-lifetime diagnostics showing completion, retirement, and
   back-pressure behavior.
 
 ### Stop / close condition
 
-- [ ] Close only when no in-use frame resource is overwritten and the public
+- [x] Close only when no in-use frame resource is overwritten and the public
   contract remains valid if the private in-flight count changes later.
 
 ## 1.4 — Vulkan alignment on Windows
 
+**Closed by:** [`fluxel-rendering` `v0.8.3`](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.8.3)
+at `1778226fb74d3fc0f2fdb12b6dd8da9d9d149960`; the durable
+`fluxel-rendering-v0.8.3-evidence.zip` Release attachment binds this closure's
+cross-backend evidence and diagnostics.
+
 ### Boundary
 
-- [ ] Run the same executable-level demo scene through Vulkan on Windows.
-- [ ] Keep equivalent shader inputs, rendering semantics, and expected visual
+- [x] Run the same executable-level demo scene through Vulkan on Windows.
+- [x] Keep equivalent shader inputs, rendering semantics, and expected visual
   output; backend setup and compiled binaries may differ.
-- [ ] Apply the DX12 lifecycle contract for resize, minimization, restoration,
+- [x] Apply the DX12 lifecycle contract for resize, minimization, restoration,
   acquisition, submission, completion, retirement, and shutdown.
-- [ ] Fix portable contract defects above a backend. Keep Vulkan layouts,
+- [x] Fix portable contract defects above a backend. Keep Vulkan layouts,
   synchronization, queues, and surface objects within RHI.
-- [ ] Do not weaken DX12 or publish a lowest-common-denominator multi-queue API
+- [x] Do not weaken DX12 or publish a lowest-common-denominator multi-queue API
   merely for textual symmetry.
 
 ### Focused checks
 
-- [ ] Run the Stage 1.2 lifecycle cases and Stage 1.3 lifetime cases through
+- [x] Run the Stage 1.2 lifecycle cases and Stage 1.3 lifetime cases through
   the shared portable contract.
-- [ ] Check structured backend-specific failures without leaking Vulkan native
+- [x] Check structured backend-specific failures without leaking Vulkan native
   objects across the RHI boundary.
 
 ### Real-target proof
 
-- [ ] Retain DX12 and Vulkan output from the same commit and scene.
-- [ ] Enable backend validation and record expected backend-specific diagnostic
+- [x] Retain DX12 and Vulkan output from the same commit and scene.
+- [x] Enable backend validation and record expected backend-specific diagnostic
   differences under the evidence policy.
 
 ### Stop / close condition
 
-- [ ] Close only when both Windows backends meet the same visible-scene and
+- [x] Close only when both Windows backends meet the same visible-scene and
   lifecycle contract without unexplained validation errors.
 
 ## 1.5 — Minimal multi-object scene
 
+**Closed by:** [`fluxel-rendering` `v0.8.3`](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.8.3)
+at `1778226fb74d3fc0f2fdb12b6dd8da9d9d149960`; the durable
+`fluxel-rendering-v0.8.3-evidence.zip` Release attachment binds this closure's
+cross-backend scene, visual, diagnostic, and lifetime evidence.
+
 ### Boundary
 
-- [ ] Replace the fixed-triangle-only path with one camera, multiple meshes,
+- [x] Replace the fixed-triangle-only path with one camera, multiple meshes,
   multiple materials, and an independent transform for each object.
-- [ ] Define deterministic draw order for identical input.
-- [ ] Reuse compatible pipelines and bindings, without promising general
+- [x] Define deterministic draw order for identical input.
+- [x] Reuse compatible pipelines and bindings, without promising general
       batching, instancing, visibility, or optimization APIs.
-- [ ] Adopt `slot-graph` only if the completed scene naturally exposes at least
+- [x] Adopt `slot-graph` only if the completed scene naturally exposes at least
       one real CPU-preparation dependency DAG. Do not create artificial tasks
       to justify the dependency; keep its types behind renderer-owned prepared
       data and outside GPU synchronization.
-- [ ] Use embedded or generated resources. Loader behavior and durable asset
+- [x] Use embedded or generated resources. Loader behavior and durable asset
   identity remain out of scope until the runtime stage.
-- [ ] Keep ordinary scene construction above RHI and RenderGraph. A mesh,
+- [x] Keep ordinary scene construction above RHI and RenderGraph. A mesh,
   material, transform, or camera must not require backend handles.
 
 ### Focused checks
 
-- [ ] Check deterministic ordering and independent transform updates.
-- [ ] Check compatible pipeline and binding reuse at the intended boundary.
-- [ ] Check invalid scene or submission inputs return structured errors.
+- [x] Check deterministic ordering and independent transform updates.
+- [x] Check compatible pipeline and binding reuse at the intended boundary.
+- [x] Check invalid scene or submission inputs return structured errors.
 
 ### Real-target proof
 
-- [ ] Run the same multi-object scene continuously on DX12 and Vulkan.
-- [ ] Retain expected and actual images or recordings using the comparison
+- [x] Run the same multi-object scene continuously on DX12 and Vulkan.
+- [x] Retain expected and actual images or recordings using the comparison
   oracle named by the stage plan.
-- [ ] Retain frame-lifetime diagnostics and the first representative CPU
+- [x] Retain frame-lifetime diagnostics and the first representative CPU
   submission and frame-time baseline.
 
 ### Stop / close condition
 
-- [ ] Close Stage 1 only when both backends run the same scene, survive the
+- [x] Close Stage 1 only when both backends run the same scene, survive the
   lifecycle sequence, and shut down cleanly without unexplained validation
   errors.
-- [ ] Do not add assets, loaders, a general platform abstraction, batching,
+- [x] Do not add assets, loaders, a general platform abstraction, batching,
   instancing, or additional scene systems to make this stage appear complete.

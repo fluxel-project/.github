@@ -44,10 +44,10 @@ repositories; adoption does not permit them to depend on Fluxel or to redefine
 Fluxel layer semantics.
 
 - [`slot-graph`](https://github.com/Moore-Sky/slot-graph) supplies typed CPU task
-  dependency execution for renderer preparation once Stage 1.5 demonstrates
-  that DAG. It does not replace `fluxel-rendergraph`: GPU resource hazards,
-  states, passes, submission, completion, and native lifetime remain in
-  RenderGraph and RHI.
+  dependency execution for the real renderer-preparation DAG implemented by
+  Stage 1.5. Its adoption is private to the renderer; it does not replace
+  `fluxel-rendergraph`: GPU resource hazards, states, passes, submission,
+  completion, and native lifetime remain in RenderGraph and RHI.
 - [`async-runtime`](https://github.com/Moore-Sky/async-runtime) supplies the
   native host-owned priority-aware scheduler once the playable host requires
   it. The host owns worker and local-domain driving and shutdown; it does not
