@@ -170,7 +170,7 @@ This does not authorize a generic-browser or mini-game claim.
 ergonomics: logical assets in bases, persistent GPU residency in rendering,
 and per-frame virtual/transient usage in RenderGraph.
 
-- [ ] 0.11: consolidate CI, cross-repository contracts, browser command/query
+- [x] 0.11: consolidate CI, cross-repository contracts, browser command/query
   semantics, canvas resize ownership, and proof-only public surfaces without
   adding renderer features.
 - [ ] 0.12: prove a common raster/resource floor on all selected backends,
@@ -185,6 +185,11 @@ and per-frame virtual/transient usage in RenderGraph.
 - [ ] Only then validate and freeze the smallest Rust-native `Scene`, `Camera`,
   `Mesh`, `Geometry`, `Material`, and `Transform` surface across affected
   supported targets.
+
+The 0.11 closure is published as
+[`fluxel-rendering` v0.11.0](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.11.0)
+and [`fluxel-jsbridge` v0.3.0](https://github.com/fluxel-project/fluxel-jsbridge/releases/tag/v0.3.0);
+Host contributed CI coverage without an artificial version bump.
 
 Stable-graph physical reuse belongs to 0.12. Cross-graph pooling, reuse across
 distinct logical resources, and memory aliasing remain separate profiling-

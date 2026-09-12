@@ -4,22 +4,21 @@ Fluxel is a native-first, AI-friendly lightweight rendering runtime with an
 approachable scene API. This is an execution map, not a release schedule or a
 promise to create every named crate or compatibility layer.
 
-**Latest closure:** 0.10 / Stage 2.2: retain the Stage 1 scene in WebGPU on
-Windows 11 x64, Google Chrome Stable `153.0.8010.36` on the AMD Radeon 780M
-driver `32.0.21028.2002`. The final rendering and JS-bridge commits are
-`8d18080efb9c14cc14ef05861660f8a7ed856309` and
-`65631997dbdc34c3ad2b44c91a099b507c72ead9`.
-This is a named-target WebGPU claim only; it neither widens WebGL2 support nor
-closes the separately unselected mini-game gate. See
-[Stage 2.2: WebGPU](stages/stage-02-webgpu.md).
+**Latest closure:** 0.11 / Architecture Closure freezes browser command/query,
+canvas ownership, candidate-device publication, terminal disposal, public
+adapter boundaries, and cross-repository CI without adding a rendering
+feature. The released rendering and JS-bridge commits are
+`dba2e4a95e1319d29b707cfb831fa49ddf0e87ef` and
+`c34dd92e69c4505fb1c08bb8868ca3c447c608cd`; Host CI is
+`7d43134460217c636d8881dbf76771e494c19e28`. The underlying named-target
+WebGPU claim remains [Stage 2.2](stages/stage-02-webgpu.md).
 
 Development follows the next visible demo closure, not the layer map. Reuse
 and extend one scene and application wherever possible. Extract a crate only
 when that demo proves an independently changing ownership boundary.
 
-**Next execution sequence:** 0.11 consolidates the cross-target architecture
-and CI without adding renderer features; 0.12 proves the minimum GPU resource
-contract; 0.13 adds logical asset identity/reuse; 0.14 adds persistent GPU
+**Next execution sequence:** 0.12 proves the minimum GPU resource contract;
+0.13 adds logical asset identity/reuse; 0.14 adds persistent GPU
 residency and completion-safe retirement; only then does the scene API freeze
 work begin. These are one-series closures, not patch-by-patch release loops.
 
@@ -266,36 +265,36 @@ No new rendering feature belongs in this closure.
 
 **TODO**
 
-- [ ] Add wasm32 compile/Clippy/bindgen smoke gates to rendering, Node CI to
+- [x] Add wasm32 compile/Clippy/bindgen smoke gates to rendering, Node CI to
       the JS bridge, Windows CI to Host, and one pinned real-WASM/browser
       cross-repository smoke artifact.
-- [ ] Record every integration repository SHA/tag and lock input; a producer
+- [x] Record every integration repository SHA/tag and lock input; a producer
       contract change must build and test its affected pinned consumer.
-- [ ] Split browser manual frame submission from last-frame observation. Loop
+- [x] Split browser manual frame submission from last-frame observation. Loop
       ownership must not change a command into a query. `requestFrame()` asks
       for one submission opportunity and returns an explicit submitted/blocked/
       terminal outcome; it neither promises immediate submission nor reads the
       last report. `lastFrameReport()` is a query and never submits.
-- [ ] Make JS compute CSS/DPR policy while rendering WASM/RHI alone mutates the
+- [x] Make JS compute CSS/DPR policy while rendering WASM/RHI alone mutates the
       canvas drawing-buffer extent.
-- [ ] Move proof-only cross-crate APIs out of documentation-hidden public
+- [x] Move proof-only cross-crate APIs out of documentation-hidden public
       semver surfaces into an explicitly supported or non-published internal
       boundary.
-- [ ] Use `Active`, `Suspended`, `Lost`, `Recovering`, `Disposing`, `Disposed`,
+- [x] Use `Active`, `Suspended`, `Lost`, `Recovering`, `Disposing`, `Disposed`,
       and `Poisoned` as the canonical upper lifecycle vocabulary where each
       term truly applies. Identically named JS producer and RHI device states
       need not transition together; backend completion/loss remains private.
-- [ ] Make replacement device, queue, format, adapter metadata, generation, and
+- [x] Make replacement device, queue, format, adapter metadata, generation, and
       device-affine objects one candidate transaction. Failed or stale attempts
       publish none of those facts.
-- [ ] Define terminal disposal by absence of live work, not by an enum alone:
+- [x] Define terminal disposal by absence of live work, not by an enum alone:
       after the Promise settles there is no active submission, detached
       completion, recovery attempt, stale callback producer, RAF/listener, or
       future GPU-object commit.
-- [ ] Audit callback-capable FFI so no Rust dynamic borrow or lock guard crosses
+- [x] Audit callback-capable FFI so no Rust dynamic borrow or lock guard crosses
       a browser call. Add deterministic deferred-operation tests for recovery,
       disposal, completion, resize, visibility, and candidate-install failure.
-- [ ] Reduce repository READMEs to current capability and recommended usage;
+- [x] Reduce repository READMEs to current capability and recommended usage;
       this roadmap remains the stage/status authority.
 
 **Close when:** native and browser public surfaces contain no accidental proof
@@ -305,6 +304,15 @@ unchanged and affected release oracles must pass.
 
 This is an ecosystem milestone, not a shared package version. Each repository
 releases only for its actual public changes and keeps its own version sequence.
+
+Closure releases are
+[`fluxel-rendering` v0.11.0](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.11.0)
+and [`fluxel-jsbridge` v0.3.0](https://github.com/fluxel-project/fluxel-jsbridge/releases/tag/v0.3.0).
+Rendering CI passed every stable/MSRV/native/WASM/cross-repository job; the
+exact-SHA DX12+Vulkan gate passed 83/83 and WebGL2/WebGPU browser lifecycle
+evidence passed against the pinned JS-bridge revision. The downloaded evidence
+archive is 71,379 bytes with SHA-256
+`a8564b6431a41c1e37e0f52f1c4a577815f90682c71d5d80872c75e625387f1d`.
 
 ### Stage 3B / 0.12 — Minimum GPU resource closure
 

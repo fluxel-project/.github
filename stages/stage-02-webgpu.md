@@ -94,6 +94,14 @@ bytes with SHA-256
 `7e78ba31b2df6d78d5ac80bda2584238ac78c20ec50f2741053072b8afbc72ae`.
 This supplements rather than rewrites the original v0.10.0 evidence record.
 
+The later ecosystem Architecture Closure releases
+[`fluxel-rendering` v0.11.0](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.11.0)
+at `dba2e4a95e1319d29b707cfb831fa49ddf0e87ef` and
+[`fluxel-jsbridge` v0.3.0](https://github.com/fluxel-project/fluxel-jsbridge/releases/tag/v0.3.0)
+at `c34dd92e69c4505fb1c08bb8868ca3c447c608cd` turn the corrective semantics
+into deterministic regressions and exact-revision CI gates. They do not widen
+this stage's named-target rendering claim.
+
 ## Non-goals and closure boundary
 
 This stage does not add generic WebGPU/browser support, a public WebGPU API,
