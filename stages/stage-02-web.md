@@ -84,7 +84,7 @@ Chrome target.
 - WebGPU, generic browser support, and any mini-game host or device.
 - A generic web global-state API, a general Host runtime, input framework,
   assets/loader, or public multi-queue API.
-- Three.js compatibility, a Three.js backend, a JavaScript scene authority,
+- Third-party scene compatibility, an external-engine backend, a JavaScript scene authority,
   or widening the Rust/native public contract for a hypothetical web target.
 - Extracting a crate or adapter framework before this vertical slice proves an
   independently changing responsibility.

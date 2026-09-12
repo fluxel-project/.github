@@ -1,9 +1,8 @@
 # Fluxel Roadmap
 
-Fluxel is a native-first, Three-like, AI-friendly lightweight rendering
-runtime. “Three-like” describes approachable scene concepts, not Three.js API
-compatibility. This is an execution map, not a release schedule or a promise
-to create every named crate.
+Fluxel is a native-first, AI-friendly lightweight rendering runtime with an
+approachable scene API. This is an execution map, not a release schedule or a
+promise to create every named crate or compatibility layer.
 
 **Latest closure:** 0.10 / Stage 2.2: retain the Stage 1 scene in WebGPU on
 Windows 11 x64, Google Chrome Stable `153.0.8010.36` on the AMD Radeon 780M
@@ -17,6 +16,12 @@ closes the separately unselected mini-game gate. See
 Development follows the next visible demo closure, not the layer map. Reuse
 and extend one scene and application wherever possible. Extract a crate only
 when that demo proves an independently changing ownership boundary.
+
+**Next execution sequence:** 0.11 consolidates the cross-target architecture
+and CI without adding renderer features; 0.12 proves the minimum GPU resource
+contract; 0.13 adds logical asset identity/reuse; 0.14 adds persistent GPU
+residency and completion-safe retirement; only then does the scene API freeze
+work begin. These are one-series closures, not patch-by-patch release loops.
 
 Read [development principles](DEVELOPMENT_PRINCIPLES.md) before changing the
 roadmap or public APIs. Read the [evidence policy](EVIDENCE_POLICY.md) before
@@ -187,11 +192,15 @@ repository gains a generic host contract.
 - [ ] 2.3 One later, explicitly selected real mini-game host: prove device
       startup, lifecycle, canvas or surface, minimal input, packaged resource
       paths, and foreground or background behavior. This target is not chosen
-      or authorized by 0.9.
+      or authorized by 0.10.
 
 **Close when:** WebGL2, WebGPU, and the selected mini-game host each have their own
 real-target visual, lifecycle, diagnostics, and scoped performance evidence.
 Browser evidence does not close the mini-game host gate.
+
+The unselected 2.3 target is an independent support gate. It may remain open
+while later native/resource work that does not consume it proceeds; doing so
+neither closes Stage 2 as a whole nor creates a generic mini-game claim.
 
 **2.1 result:** `fluxel-rendering` candidate `098ee1bd5d87ef17ba2cc8ec1031636b3e4e57d3`
 and `fluxel-jsbridge` candidate `db6361fbc015522bf8abf37919da45a48a7f0daa`
@@ -215,7 +224,7 @@ zero-size/restore, hidden/visible, controlled `device.destroy()` loss,
 recovery into a new device generation, and async dispose. The WebGPU path keeps
 canvas context, device, queue, pipeline/buffer objects, completion tickets,
 and recovery private to rendering WASM/RHI; the JS bridge owns only DOM
-lifecycle and one RAF. The candidate evidence records bounded `N=3`
+lifecycle and one RAF. The release evidence records bounded `N=3`
 completion-driven admission, diagnostics, scoped measurements, and visual plus
 pixel/frame-marker samples. It is evidence for 2.2 only: WebGL2 remains its
 own 2.1 closure and the mini-game gate remains open.
@@ -226,70 +235,142 @@ and [`fluxel-jsbridge` v0.2.0](https://github.com/fluxel-project/fluxel-jsbridge
 The downloaded `fluxel-rendering-v0.10.0-evidence.zip` is 60,347 bytes with
 SHA-256 `94280a7ad6cccf518a1c8975326fe847f448956681a1c97de93955d72691b8fd`.
 
-## Stage 3 — Three-like API validation
+## Stage 3 — Resource foundation and scene API
 
-Use one small Three.js example only as a comparison case. Express it with
-Fluxel-native `Scene`, `Camera`, `Mesh`, `Geometry`, `Material`, and
-`Transform` concepts. Ordinary scene code must not use RHI or RenderGraph.
+The retained scene has proved four backends, but its proof interfaces and
+resource breadth are still intentionally narrow. Close the real resource and
+lifetime model before a public scene API can accidentally encode raw GPU
+objects, backend-specific completion, or per-pass asset lookup.
 
-**Boundary:** Rust owns the semantics. This validates a small object model; it
-does not create a complete scene framework, a Three.js backend, or a JavaScript
-source of truth.
+**Boundary:** Rust owns the semantics. Keep logical assets, persistent GPU
+residency, and graph-transient resources as three separate lifetime domains.
+Do not create a general asset pipeline, filesystem loader, material catalog,
+compatibility facade, or speculative transient allocator.
 
-**Owning repository:** `fluxel-rendering`.
+**Owning repositories:** `fluxel-rendering` for RHI, RenderGraph, renderer,
+residency, and internal contracts; `fluxel-bases` for logical asset mechanisms
+only after a real consumer proves them.
 
-**Participating repositories:** `fluxel-jsbridge`.
+**Participating repository:** `fluxel-jsbridge` for browser contract and real
+WASM integration gates.
 
-**Artifact under test:** the same experimental scene rendered by the
-`fluxel-rendering` DX12 executable and the JS-bridge WebGL2 integration.
+### Stage 3A / 0.11 — Architecture and contract consolidation
 
-**Cross-repository contract changes:** expose the experimental Rust scene
-concepts through a thin, replaceable JS bridge only as needed by the example.
-Rust remains the semantic authority; no Three.js compatibility or independent
-JS scene contract is created.
-
-### Stage 3A — Low-cost API probe
+No new rendering feature belongs in this closure.
 
 **TODO**
 
-- [ ] Design the smallest coherent Rust object model for the example.
+- [ ] Add wasm32 compile/Clippy/bindgen smoke gates to rendering, Node CI to
+      the JS bridge, Windows CI to Host, and one pinned real-WASM/browser
+      cross-repository smoke artifact.
+- [ ] Record every integration repository SHA/tag and lock input; a producer
+      contract change must build and test its affected pinned consumer.
+- [ ] Split browser manual frame submission from last-frame observation. Loop
+      ownership must not change a command into a query.
+- [ ] Make JS compute CSS/DPR policy while rendering WASM/RHI alone mutates the
+      canvas drawing-buffer extent.
+- [ ] Move proof-only cross-crate APIs out of documentation-hidden public
+      semver surfaces into an explicitly supported or non-published internal
+      boundary.
+- [ ] Share upper lifecycle vocabulary where semantics truly match, while
+      keeping each backend's completion/loss mechanism private.
+- [ ] Reduce repository READMEs to current capability and recommended usage;
+      this roadmap remains the stage/status authority.
+
+**Close when:** native and browser public surfaces contain no accidental proof
+API, command/query and resize ownership are unambiguous, and fast CI compiles
+the real cross-repository composition. Existing real-target support must remain
+unchanged and affected release oracles must pass.
+
+### Stage 3B / 0.12 — Minimum GPU resource closure
+
+**TODO**
+
+- [ ] Prove the minimum buffer/texture, sampled texture, offscreen color,
+      depth, upload, copy, readback, compute, and multipass contracts actually
+      required by the retained scene's next extension.
+- [ ] Keep persistent resources as explicit imports with provider-owned
+      physical identity and initial state; keep graph-created resources
+      transient and reject unsupported physical aliasing.
+- [ ] Prove state, last use, accepted-unknown work, device generation,
+      recreation, and completion-driven retirement on the named backend matrix.
+- [ ] Freeze only capability facts demonstrated by those tests. Do not mirror
+      a platform API or expose multi-queue policy.
+
+**Close when:** the same compiled graph contracts prove persistent imports and
+transient virtual resources across the selected native and browser backends,
+with deterministic readback and clean lifecycle diagnostics.
+
+### Stage 3C / 0.13 — Logical asset core
+
+Use embedded/in-memory content first so platform I/O cannot define the asset
+contract.
+
+**TODO**
+
+- [ ] In `fluxel-bases`, prove typed logical identity, content generation,
+      explicit lookup/state, strong/weak ownership, duplicate-load coalescing,
+      stale-handle rejection, and structured failure.
+- [ ] Treat zero logical users as a reusable CPU-cache candidate, not immediate
+      destruction; add size accounting and a small explicit budget/eviction
+      policy without raw manager back-pointers or GPU knowledge.
+- [ ] Keep logical identity separate from loaded bytes and from every RHI
+      resource. Do not make handle dereference hide generation/state changes.
+
+**Close when:** two real consumers share one logical content generation,
+duplicate work coalesces, stale identity fails closed, and cache collection is
+deterministic under the fixed budget workload.
+
+### Stage 3D / 0.14 — Rendering residency
+
+**TODO**
+
+- [ ] Map `(asset identity, content generation, device generation)` to a
+      persistent rendering realization with explicit pending, committed, and
+      retire-candidate states.
+- [ ] Resolve residency once during frame preparation, import the result into
+      RenderGraph, and remove asset management from pass execution.
+- [ ] Commit uploads only after known completion; logical release merely
+      requests retirement, while graph-recorded last use plus submission
+      completion authorizes RHI destruction or reuse.
+- [ ] Prove device-loss recreation retains logical assets while replacing only
+      the dead GPU generation.
+
+**Close when:** one shared mesh/image survives reuse, content replacement,
+device recreation, and completion-safe retirement without duplicate GPU
+realization or stale-generation access.
+
+### Stage 3E — Approachable scene API validation
+
+**TODO**
+
+- [ ] Design the smallest coherent Rust `Scene`, `Camera`, `Mesh`, `Geometry`,
+      `Material`, and `Transform` model over the proved asset/residency path.
 - [ ] Make ownership, sharing, mutation, removal, deterministic draw order,
-      and structured errors explicit.
-- [ ] Keep JS or TS experiments thin and replaceable; Rust remains the
-      authority.
-- [ ] Run the example on DX12 and WebGL2, chosen as distinct representative
-      environments for finding API mistakes early.
-- [ ] Record deliberate differences from the source Three.js example.
-
-**Close when:** the example exposes one coherent Rust API on DX12 and WebGL2,
-and the review records the API mistakes found and the deliberate differences
-from Three.js. Stage 4 may proceed with this API marked experimental.
-
-### Stage 3B — API freeze for supported targets
-
-**TODO**
-
-- [ ] Before publicly committing the API, run the frozen example on every
-      affected supported target.
-- [ ] Resolve or document target-specific semantic differences without leaking
-      backend objects into scene APIs.
+      and structured errors explicit; ordinary scene code cannot access RHI or
+      RenderGraph.
+- [ ] Keep language bindings thin and replaceable; Rust remains authoritative.
+- [ ] Probe the experimental API on two distinct representative backends, then
+      run every affected supported target before declaring it stable.
 - [ ] Publish one recommended scene construction and rendering path.
 
-**Close when:** the resulting public contract passes every affected supported
-target before it is declared stable. Stage 3B is a public-API freeze gate, not
-a reason to run the full platform matrix during Stage 3A.
+**Close when:** one coherent scene API consumes logical assets and prepared
+residency across every affected supported target without exposing backend or
+resource-manager internals.
 
-Do not add Three.js inheritance, plugin contracts, `Three*` compatibility
-types, a complete material catalog, or a general scene framework. Fluxel does
-not target full Three.js compatibility, does not provide a Three.js backend,
-and will not create `threejs-native`.
+A restricted compatibility capability profile may be scheduled after Stage 3B
+and before mobile only when a second concrete implementation proves shared
+limits. It must describe a capability floor, not mirror a platform API.
+Physical transient pooling and aliasing remain separate profiling-driven
+optimization gates requiring virtual lifetime intervals, alias barriers, and
+completion-safe reuse.
 
 ## Stage 4 — Windows playable runtime
 
-Extend the existing multi-object scene into a small long-running Windows
-application. Introduce internal platform, time, input, loader, asset, and
-application-composition boundaries in their owning repositories only when the
-following work demonstrates their separate ownership.
+Extend the Stage 3 scene into a small long-running Windows application. Consume
+the proved asset/residency contracts; introduce platform, time, input, loader,
+and application-composition boundaries in their owning repositories only when
+the running application demonstrates separate ownership.
 
 **Boundary:** Windows playable runtime only. Create boundaries on demonstrated
 need, not because they appear in the layer map. Do not add networking, storage,
@@ -318,8 +399,8 @@ or process ownership.
       frame budget; rendering and RenderGraph do not acquire runtime policy.
 - [ ] Add only the required input, file or memory loading, mesh and image
       decoding, and camera or game control.
-- [ ] Establish typed handles, generations, reuse, CPU/GPU residency, and
-      retirement; prove shared resources load once and release safely.
+- [ ] Load the Stage 3 logical assets through the smallest synchronous platform
+      reader and preserve the proved GPU residency/retirement contract.
 - [ ] Add asynchronous loading only after the synchronous lifecycle is sound.
 - [ ] Extract platform, loader, assets, time, input, and runtime boundaries
       only where the running application makes them real.
@@ -422,7 +503,7 @@ Build one durable HUD or settings screen using the existing runtime, Canvas,
 text, and input. Start from the screen's real requirements.
 
 **Boundary:** ship one concrete screen and reuse existing lifecycle systems.
-Do not create a general UI framework, virtual DOM, CSS system, or Vue
+Do not create a general UI framework, virtual DOM, CSS system, or third-party
 compatibility layer.
 
 **Owning repository:** `fluxel-rendering`. The UI closure extends the existing
@@ -454,7 +535,7 @@ shared mechanism types.
 and can be recreated without stale input targets or resource growth.
 
 Do not add a virtual DOM, template compiler, CSS cascade, general reactive
-runtime, plugin protocol, Vue compatibility surface, or `vue-native`.
+runtime, plugin protocol, or third-party compatibility surface.
 
 ## Unscheduled candidates
 
@@ -476,5 +557,5 @@ embedder proves its scope and ownership.
 - [ ] ECS, editor tooling, a broader JavaScript SDK, and purpose-built
       declarative UI.
 
-No candidate implies a Three.js-compatible facade, `threejs-native`,
-Vue-compatible UI, or `vue-native`.
+No candidate implies a third-party engine, scene-API, or UI compatibility
+facade.

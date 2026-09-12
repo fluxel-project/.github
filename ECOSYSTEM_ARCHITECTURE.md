@@ -74,16 +74,16 @@ Status has a precise planning meaning:
 | `fluxel-renderer` | `fluxel-rendering` | Existing | 3D submission, render packets, deterministic ordering, grouping, and lowering into RenderGraph | Existing workspace crate in `fluxel-rendering` |
 | `fluxel-base` | `fluxel-bases` | Candidate | Small stateless shared types and utilities such as bytes, encoding, identifiers, hashing, and version or protocol values | More than one real consumer needs a coherent shared utility boundary |
 | `fluxel-diagnostics` | `fluxel-bases` | Candidate | Structured diagnostic records, filtering, routing, and subscriptions | More than one layer needs shared diagnostics without a platform sink |
-| `fluxel-assets` | `fluxel-bases` | Candidate | Durable asset identity, typed handles, generations, cross-frame references, loading state, cache/reuse policy, and safe release | A demo proves cross-frame identity, reuse, and retirement across consumers |
+| `fluxel-assets` | `fluxel-bases` | Candidate | Logical asset identity, typed handles, content generations, state, logical references, load deduplication, reusable CPU cache candidates, size accounting, and budget eviction | A demo proves cross-frame identity and reuse without importing GPU or platform policy |
 | `fluxel-loader` | `fluxel-bases` | Candidate | Loading state, deduplication, cancellation, failure, and CPU-data orchestration | A real loading path needs reusable policy independent of a platform reader |
 | `fluxel-time` | `fluxel-bases` | Candidate | Portable time values, timers, timeouts, and fixed-update semantics | A host loop proves reusable timing semantics |
 | `fluxel-input` | `fluxel-bases` | Candidate | Normalized keyboard, mouse, touch, wheel, and gamepad values and events | A playable or mobile demo proves shared input semantics |
 | `fluxel-image` | `fluxel-bases` | Unscheduled | Owned pixel data and portable image codecs | Image behavior becomes reusable outside one loading path |
-| `fluxel-render-assets` | `fluxel-rendering` | Candidate | GPU residency, upload, device-loss recreation, and frame-safe retirement for base asset identities | Rendering needs a reusable GPU-resource adapter |
+| `fluxel-render-assets` | `fluxel-rendering` | Candidate | Persistent GPU residency keyed by asset/device generation, pending-to-committed upload, device-loss recreation, last-use tracking, and completion-safe retirement | A retained scene consumes a logical asset through RenderGraph import and survives recreation |
 | `fluxel-canvas` | `fluxel-rendering` | Candidate | Canvas-style 2D drawing semantics, including images, sprites, transforms, clipping, blending, ordering, text, and offscreen work | Stage 6 proves the Canvas boundary with one shared demo |
 | `fluxel-shader` | `fluxel-rendering` | Unscheduled | Shader compilation, reflection, variants, and caching | Shader policy evolves independently from renderer submission |
 | `fluxel-rendering-abi` | `fluxel-rendering` | Unscheduled | Stable native binary packaging for the rendering library | A concrete native embedder requires a versioned rendering boundary |
-| `fluxel-rendering-wasm` | `fluxel-rendering` | Candidate | WASM packaging and exports for the rendering library | Stage 2 requires it for a supported browser and mini-game integration |
+| `fluxel-rendering-wasm` | `fluxel-rendering` | Existing | WASM packaging and exports for the rendering library | Existing non-published workspace crate proved by Stage 2 browser closures |
 | `fluxel-platform` | `fluxel-host` | Candidate | Application startup, windows, screens, DPI, resize, and host lifecycle | Stage 4 proves reusable host lifecycle independent of the demo; Stage 1.1 supplies only its minimal Win32 Window primitive |
 | `fluxel-fs` | `fluxel-host` | Unscheduled | Platform file, directory, path, stream, and random-access I/O implementations | A host consumer needs it beyond local internals |
 | `fluxel-storage` | `fluxel-host` | Unscheduled | Platform persistence for key-value data, JSON, blobs, and local storage | A real application requires persistent state on a named host |
@@ -96,7 +96,7 @@ Status has a precise planning meaning:
 | `fluxel-vm-js` | `fluxel-host` | Unscheduled | JavaScript VM integration for selected native hosts | A selected host requires VM-independent runtime integration |
 | `fluxel-native-bridge` | `fluxel-host` | Unscheduled | Native bindings that expose host services to a language runtime | A selected native language host requires a reusable bridge |
 | `fluxel-js-sdk` | `fluxel-jsbridge` | Unscheduled | Developer-facing JavaScript API that composes rendering and host capabilities | A real JavaScript application validates one supported public path |
-| `fluxel-adapter-browser` | `fluxel-jsbridge` | Candidate | Browser APIs, WASM loading, and browser diagnostic sinks | Stage 2 proves a named browser target |
+| `fluxel-adapter-browser` | `fluxel-jsbridge` | Existing | Browser APIs, WASM loading, lifecycle adaptation, and browser diagnostic sinks | Existing package proved by the Stage 2.1 and 2.2 named-browser closures |
 | `fluxel-adapter-minigame` | `fluxel-jsbridge` | Candidate | Selected mini-game APIs and platform adaptation | Stage 2 proves one explicitly selected mini-game host on a device |
 | `fluxel-adapter-native` | `fluxel-jsbridge` | Unscheduled | JavaScript adaptation over native-host bridge contracts | A native host exposes a JavaScript SDK path |
 | `fluxel-ui` | `fluxel-rendering` | Unscheduled | Purpose-built declarative UI over rendering and prepared resources | A later consumer demonstrates reusable declarative UI beyond the Stage 7 screen |
@@ -109,6 +109,16 @@ Status has a precise planning meaning:
 - Rendering owns GPU realization. A rendering asset adapter may turn base asset
   identity and loaded bytes into GPU residency, upload, recreation, and
   retirement without moving shared identity into RHI.
+- A logical asset becoming unused only creates a residency-retirement candidate.
+  Frame preparation resolves a persistent realization once, imports it into the
+  graph, and records its actual last submission use. Only known completion may
+  authorize RHI destruction or reuse; per-pass asset lookup is not a supported
+  execution model.
+- RenderGraph-transient textures and buffers never enter the asset manager.
+  RenderGraph owns their virtual liveness and alias legality; a private
+  device-generation physical pool may reuse compatible allocations only after
+  GPU-safe completion. Physical pooling or aliasing remains an optimization
+  gate and is not implied by logical resource lifetime.
 - Diagnostics schema, filtering, and routing belong in `fluxel-bases`.
   Rendering and host code emit structured records; native sinks belong in
   `fluxel-host`, while browser and mini-game sinks belong in `fluxel-jsbridge`.
@@ -122,6 +132,11 @@ Status has a precise planning meaning:
 - `fluxel-rhi` owns native barriers, queues, fences, commands, submission, and
   readback. RHI realizes portable RenderGraph contracts; RenderGraph does not
   import RHI or implement native synchronization.
+- A future restricted compatibility profile, if demonstrated, expresses a
+  capability floor rather than mirroring one platform API. It may be extracted
+  only after the modern minimum resource contract is proved and a second real
+  implementation needs the same limits. Backend-specific completion mechanisms
+  remain private even when upper lifecycle outcomes align.
 - `fluxel-renderer` and `fluxel-canvas` consume RenderGraph and prepared
   resources. They do not own platform I/O, application lifecycle, or the
   cross-platform asset identity model.
@@ -132,15 +147,30 @@ Status has a precise planning meaning:
 - `fluxel-jsbridge` presents a unified JavaScript experience over browser,
   mini-game, and native-host APIs. It may organize loading and diagnostic
   subscription, but must not redefine rendering or host semantics.
-- `fluxel-ui` may study declarative UI ergonomics but is not Vue-compatible,
-  does not create `vue-native`, and does not introduce DOM or CSS contracts into
-  the native core.
+- `fluxel-ui` may study declarative UI ergonomics but is not compatible with a
+  third-party UI framework,
+  does not provide a third-party compatibility facade, and does not introduce
+  DOM or CSS contracts into the native core.
+
+## Internal implementation boundaries
+
+Cross-crate proof code marked documentation-hidden is still a Rust public
+semver surface. After a vertical slice proves its shape, browser/RHI proof
+contracts must either become intentionally supported APIs or move behind a
+non-published workspace-internal boundary. Internal consolidation must preserve
+backend-private completion, loss, and native-object ownership rather than
+inventing one universal low-level state machine.
+
+Browser adapters share one public lifecycle vocabulary and one DOM reducer,
+while backend-specific creation, completion, loss, and recovery stay private.
+The adapter computes CSS/DPR extent; rendering WASM/RHI is the sole drawing-
+buffer mutator. Manual frame submission and last-frame observation use separate
+operations so command and query semantics cannot change with loop state.
 
 ## Explicit exclusions
 
 This ownership map does not commit Fluxel to creating every listed crate. It
-does not authorize a Three.js backend, full Three.js compatibility,
-`threejs-native`, Vue compatibility, or `vue-native`. Stage work remains
-limited by [ROADMAP.md](ROADMAP.md),
+does not authorize a third-party engine backend, API compatibility facade, or
+UI compatibility layer. Stage work remains limited by [ROADMAP.md](ROADMAP.md),
 [DEVELOPMENT_PRINCIPLES.md](DEVELOPMENT_PRINCIPLES.md), and
 [EVIDENCE_POLICY.md](EVIDENCE_POLICY.md).

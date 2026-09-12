@@ -97,9 +97,29 @@ simulators can supplement development evidence but cannot replace a required
 physical mobile-device run.
 
 Maintain a capability ledger that records the highest proved capability set for
-each target. Do not generalize a result from one backend or platform to another.
-A later platform-specific closure does not change earlier target claims unless
-its oracle is rerun or an explicit reviewed support decision changes them.
+each target. Each retained manifest identifies every participating repository
+commit/tag, relevant lockfile, target, capability snapshot, command, and oracle.
+Capabilities are read-only observed facts: an adapter may translate or project
+them, but cannot manufacture a capability unsupported by the owning layer.
+Do not generalize a result from one backend or platform to another. A later
+platform-specific closure does not change earlier target claims unless its
+oracle is rerun or an explicit reviewed support decision changes them.
+
+For cross-repository work, the repository that owns the runnable integration
+artifact owns its smoke script and lock inputs. Fast CI must build the real
+producer artifact with its pinned consumer and exercise their minimum contract.
+Release evidence additionally binds all final commits and named real targets;
+neither mock boundaries nor an independently green producer and consumer prove
+their composition.
+
+Use stable counting terms in evidence summaries:
+
+- a **test function** is one harness-discovered test entry;
+- a **logical case** is one named input/expected-output contract; and
+- a **backend execution** is one logical case run on one concrete backend.
+
+Always label the reported count. Do not compare an earlier test-function count
+with a later backend-execution count as if they used the same denominator.
 
 Distinguish unavailable hardware, driver, validation layers, or host services
 from an implementation failure. Missing required real-target evidence leaves

@@ -1,8 +1,8 @@
 # Fluxel Ecosystem
 
-Fluxel is a native-first, Three-like, AI-friendly lightweight rendering
-ecosystem. “Three-like” describes approachable scene concepts, not Three.js API
-compatibility. Rust rendering and host contracts are authoritative. Development
+Fluxel is a native-first, AI-friendly lightweight rendering ecosystem with an
+approachable scene API and no implied third-party compatibility. Rust rendering
+and host contracts are authoritative. Development
 follows visible demo closure rather than completing architectural layers in
 advance.
 
@@ -18,7 +18,7 @@ advance.
   `fluxel-bases`, `fluxel-rendering`, `fluxel-host`, and `fluxel-jsbridge`.
 - A portable design proven by real DX12, Vulkan, WebGL2, WebGPU, and platform
   evidence as those targets enter the roadmap.
-- A Three-like usability experiment where concepts are adopted only when they
+- A scene-API usability experiment where concepts are adopted only when they
   remain natural, typed Rust APIs.
 - A demo-driven project: the next visible closure decides what must exist next.
 - When that closure exposes a capability belonging to another repository, its
@@ -28,9 +28,8 @@ advance.
 
 ## What Fluxel is not
 
-- Not a Three.js backend, a 100% Three.js compatibility layer, or
-  `threejs-native`.
-- Not a Vue, DOM, or CSS compatibility layer, and not `vue-native`.
+- Not a backend or compatibility layer for another scene engine.
+- Not a third-party UI, DOM, or CSS compatibility layer.
 - Not a plan to create every candidate crate before a running demo needs it.
 - Not a place where compile, mock, or `TestRhi` results are presented as
   real-device correctness.
@@ -159,22 +158,37 @@ The downloaded evidence archive is 60,347 bytes with SHA-256
 `94280a7ad6cccf518a1c8975326fe847f448956681a1c97de93955d72691b8fd`.
 This does not authorize a generic-browser or mini-game claim.
 
-### Stage 3 — Three-like API validation
+### Stage 3 — Resource foundation and scene API
 
-**Boundary:** validate a small Rust-native `Scene`, `Camera`, `Mesh`,
-`Geometry`, `Material`, and `Transform` surface. Do not add Three.js
-inheritance, plugins, material breadth, or compatibility types.
+**Boundary:** close the three distinct lifetime domains before freezing scene
+ergonomics: logical assets in bases, persistent GPU residency in rendering,
+and per-frame virtual/transient usage in RenderGraph.
 
-- [ ] Stage 3A: probe ergonomics on DX12 and WebGL2.
-- [ ] Stage 3B: before public API freeze, validate all affected supported
-  targets.
+- [ ] 0.11: consolidate CI, cross-repository contracts, browser command/query
+  semantics, canvas resize ownership, and proof-only public surfaces without
+  adding renderer features.
+- [ ] 0.12: prove the minimum GPU texture/buffer, offscreen/depth,
+  upload/copy/readback, compute, multipass, generation, and retirement model.
+- [ ] 0.13: prove logical typed asset identity, generation, duplicate-work
+  coalescing, reuse, size accounting, and deterministic budget eviction with no
+  GPU or platform-I/O ownership.
+- [ ] 0.14: resolve persistent residency once during preparation, import it
+  into RenderGraph, and prove pending/committed generations, device recreation,
+  last-use tracking, and completion-safe retirement.
+- [ ] Only then validate and freeze the smallest Rust-native `Scene`, `Camera`,
+  `Mesh`, `Geometry`, `Material`, and `Transform` surface across affected
+  supported targets.
+
+Physical transient pooling/aliasing remains a separate profiling-driven gate;
+logical graph lifetime never implies per-frame physical destruction.
 
 ### Stage 4 — Windows playable runtime
 
 **Boundary:** extend the existing scene into one playable Windows application.
-Introduce platform, time, input, loader, assets, and runtime boundaries only
-when the demo proves their independent ownership. Networking, audio, scripting,
-ECS, and editor work remain out of scope.
+Consume the proved asset/residency model and introduce platform, time, input,
+loader, and runtime boundaries only when the demo proves their independent
+ownership. Networking, audio, scripting, ECS, and editor work remain out of
+scope.
 
 - [ ] Close input, updates, loading, reuse, asynchronous work, pause/resume, and
   safe shutdown in the same demo.
@@ -204,8 +218,8 @@ rich text, multilingual layout, and CSS remain excluded.
 ### Stage 7 — UI closure
 
 **Boundary:** one real HUD or settings page using existing runtime, Canvas,
-text, assets, and input. Do not add Vue compatibility, a virtual DOM, CSS
-cascade, or a general reactive framework.
+text, assets, and input. Do not add third-party compatibility, a virtual DOM,
+CSS cascade, or a general reactive framework.
 
 - [ ] Close interaction, state updates, destruction, and resource release for
   the chosen screen.
@@ -220,6 +234,5 @@ cascade, or a general reactive framework.
 - [Stage 2 Web guide](https://github.com/fluxel-project/.github/blob/main/stages/stage-02-web.md)
 - [Stage 2 WebGPU guide](https://github.com/fluxel-project/.github/blob/main/stages/stage-02-webgpu.md)
 
-Participating repositories should maintain local, ignored `AGENTS.md` guidance
-for ownership, modification locations, focused verification commands, and
-real-target gates.
+Local execution guidance is maintained above the repository group and is not
+published as project documentation.
