@@ -6,8 +6,10 @@ compatibility. Rust rendering and host contracts are authoritative. Development
 follows visible demo closure rather than completing architectural layers in
 advance.
 
-> **Current target:** scope Stage 2 around the retained Stage 1 scene, named real
-> web targets, and exactly one named mini-game host before implementation.
+> **Latest closure:** 0.9 / Stage 2.1 retains the Stage 1 scene in WebGL2 on
+> Windows 11 x64, Google Chrome Stable `153.0.8010.36`. Microsoft Edge 153 is
+> auxiliary compatibility evidence only and does not widen the support claim;
+> WebGPU and a named mini-game host remain separate Stage 2 gates.
 
 ## What Fluxel is
 
@@ -123,9 +125,23 @@ See the [Stage 1 execution guide](https://github.com/fluxel-project/.github/blob
 **Boundary:** port the Stage 1 scene, not a new demo. Support claims remain
 specific to named browsers, backends, hosts, and devices.
 
-- [ ] Close WebGL2.
-- [ ] Close WebGPU.
-- [ ] Close one explicitly selected mini-game host on a real device.
+- [x] 0.9 / WebGL2: close the retained scene on Windows 11 x64, Google Chrome
+  Stable `153.0.8010.36`; Edge 153 is auxiliary evidence only.
+- [ ] Later: close WebGPU as its own named-target gate.
+- [ ] Later: close one explicitly selected mini-game host on a real device.
+
+See the [Stage 2 Web execution guide](https://github.com/fluxel-project/.github/blob/main/stages/stage-02-web.md).
+
+`fluxel-rendering` candidate `098ee1bd5d87ef17ba2cc8ec1031636b3e4e57d3` and
+`fluxel-jsbridge` candidate `db6361fbc015522bf8abf37919da45a48a7f0daa` complete
+the Chrome-only WebGL2 claim.  The real Chrome run retained the lifecycle
+sequence, 24 representative screenshots, 15 dense samples per visible state,
+expected black/red/green/blue readbacks, clean diagnostics, and fixed-workload
+startup/CPU-submission/WASM-memory measurements.  It does not claim Edge,
+WebGPU, generic browser, or mini-game support.
+The corresponding releases are
+[`fluxel-rendering` v0.9.0](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.9.0)
+and [`fluxel-jsbridge` v0.1.0](https://github.com/fluxel-project/fluxel-jsbridge/releases/tag/v0.1.0).
 
 ### Stage 3 — Three-like API validation
 
@@ -185,6 +201,7 @@ cascade, or a general reactive framework.
 - [Development principles](https://github.com/fluxel-project/.github/blob/main/DEVELOPMENT_PRINCIPLES.md)
 - [Evidence policy](https://github.com/fluxel-project/.github/blob/main/EVIDENCE_POLICY.md)
 - [Stage 1 Windows guide](https://github.com/fluxel-project/.github/blob/main/stages/stage-01-windows.md)
+- [Stage 2 Web guide](https://github.com/fluxel-project/.github/blob/main/stages/stage-02-web.md)
 
 Participating repositories should maintain local, ignored `AGENTS.md` guidance
 for ownership, modification locations, focused verification commands, and

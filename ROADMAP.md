@@ -5,8 +5,10 @@ runtime. “Three-like” describes approachable scene concepts, not Three.js AP
 compatibility. This is an execution map, not a release schedule or a promise
 to create every named crate.
 
-**Current target:** scope Stage 2 around the retained Stage 1 scene, named real
-web targets, and exactly one named mini-game host before implementation.
+**Current target:** 0.9 / Stage 2.1: retain the Stage 1 scene in WebGL2 on
+Windows 11 x64, Google Chrome Stable `153.0.8010.36`. Microsoft Edge 153 may
+provide auxiliary compatibility evidence only; it does not widen the support
+claim. The execution contract is in [Stage 2: Web](stages/stage-02-web.md).
 
 Development follows the next visible demo closure, not the layer map. Reuse
 and extend one scene and application wherever possible. Extract a crate only
@@ -145,8 +147,10 @@ diagnostic, and baseline evidence without unexplained validation errors.
 
 ## Stage 2 — Web and one mini-game host
 
-Keep the Stage 1 scene and expected image. Name the browser and exactly one
-mini-game host in the stage plan before implementation.
+Keep the Stage 1 scene and expected image. Each substage names its real target
+before implementation; it does not authorize the later WebGPU or mini-game
+gate. Stage 2's detailed execution contract starts with
+[Stage 2: Web](stages/stage-02-web.md).
 
 **Boundary:** support WebGL2, WebGPU, and one named mini-game host separately.
 Do not claim generic web or mini-game support, redesign native APIs around web
@@ -156,8 +160,8 @@ global state, or use browser evidence for the host device.
 
 **Participating repositories:** `fluxel-jsbridge`.
 
-**Artifact under test:** the rendering WASM package plus the named browser and
-one named mini-game integration package, each run on its real target.
+**Artifact under test:** the rendering WASM package plus each separately named
+browser or mini-game integration package, run on its real target.
 
 **Cross-repository contract changes:** define only the narrow rendering-to-JS
 bridge needed to start, resize, submit the preserved scene, and report
@@ -166,19 +170,38 @@ repository gains a generic host contract.
 
 **TODO**
 
-- [ ] 2.1 WebGL2: canvas creation and resize, multi-object rendering,
-      visibility and context recovery, resource rebinding, and scoped package,
-      startup, CPU-submission, and memory measurements.
+- [x] 2.1 WebGL2 / 0.9: Windows 11 x64 Google Chrome Stable `153.0.8010.36`:
+      canvas creation and resize, retained multi-object rendering, visibility
+      and context recovery, resource rebinding, and scoped package, startup,
+      CPU-submission, and memory measurements. Edge 153 is auxiliary evidence
+      only, not another supported browser claim.
 - [ ] 2.2 WebGPU: the same scene and expected output, surface reconfiguration,
       device-loss behavior, and portable RenderGraph semantics without a public
       multi-queue API.
-- [ ] 2.3 One real mini-game host: prove device startup, lifecycle, canvas or
-      surface, minimal input, packaged resource paths, and foreground or
-      background behavior.
+- [ ] 2.3 One later, explicitly selected real mini-game host: prove device
+      startup, lifecycle, canvas or surface, minimal input, packaged resource
+      paths, and foreground or background behavior. This target is not chosen
+      or authorized by 0.9.
 
 **Close when:** WebGL2, WebGPU, and the selected mini-game host each have their own
 real-target visual, lifecycle, diagnostics, and scoped performance evidence.
 Browser evidence does not close the mini-game host gate.
+
+**2.1 result:** `fluxel-rendering` candidate `098ee1bd5d87ef17ba2cc8ec1031636b3e4e57d3`
+and `fluxel-jsbridge` candidate `db6361fbc015522bf8abf37919da45a48a7f0daa`
+close the Chrome/WebGL2 substage.  The named-target run covered stable, resize,
+zero-size, restore, hidden, visible, context-lost, and context-restored states;
+it retained three representative screenshots per state plus fifteen dense
+frame-marker/readback samples for every visible state.  It observed the expected
+black clear and red/green/blue scene, clean structured/browser/WebGL diagnostics,
+stable 1,179,648-byte WASM memory, and CPU submission at or below 1 ms in the
+fixed workload.  The same rendering candidate's Windows AMD Radeon 780M DX12 and
+Vulkan conformance gate passed 83/83 real-GPU cases across the renderer and RHI
+test binaries.  This is evidence for 2.1
+only: WebGPU and a named mini-game host remain required to close Stage 2.
+The durable releases are
+[`fluxel-rendering` v0.9.0](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.9.0)
+and [`fluxel-jsbridge` v0.1.0](https://github.com/fluxel-project/fluxel-jsbridge/releases/tag/v0.1.0).
 
 ## Stage 3 — Three-like API validation
 
