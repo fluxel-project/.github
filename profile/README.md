@@ -167,11 +167,12 @@ and per-frame virtual/transient usage in RenderGraph.
 - [ ] 0.11: consolidate CI, cross-repository contracts, browser command/query
   semantics, canvas resize ownership, and proof-only public surfaces without
   adding renderer features.
-- [ ] 0.12: prove the minimum GPU texture/buffer, offscreen/depth,
-  upload/copy/readback, compute, multipass, generation, and retirement model.
-- [ ] 0.13: prove logical typed asset identity, generation, duplicate-work
-  coalescing, reuse, size accounting, and deterministic budget eviction with no
-  GPU or platform-I/O ownership.
+- [ ] 0.12: prove a common raster/resource floor on all selected backends,
+  separate storage/compute capability gates on modern backends, and one stable
+  compiled graph's completion-safe physical reuse across frames.
+- [ ] 0.13: prove logical typed asset identity, generation, one source-agnostic
+  producer per identity, reuse, size accounting, and deterministic budget
+  eviction with no GPU, I/O, or decode ownership.
 - [ ] 0.14: resolve persistent residency once during preparation, import it
   into RenderGraph, and prove pending/committed generations, device recreation,
   last-use tracking, and completion-safe retirement.
@@ -179,8 +180,9 @@ and per-frame virtual/transient usage in RenderGraph.
   `Mesh`, `Geometry`, `Material`, and `Transform` surface across affected
   supported targets.
 
-Physical transient pooling/aliasing remains a separate profiling-driven gate;
-logical graph lifetime never implies per-frame physical destruction.
+Stable-graph physical reuse belongs to 0.12. Cross-graph pooling, reuse across
+distinct logical resources, and memory aliasing remain separate profiling-
+driven gates; logical graph lifetime never implies per-frame destruction.
 
 ### Stage 4 — Windows playable runtime
 

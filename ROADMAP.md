@@ -286,20 +286,29 @@ unchanged and affected release oracles must pass.
 
 **TODO**
 
-- [ ] Prove the minimum buffer/texture, sampled texture, offscreen color,
-      depth, upload, copy, readback, compute, and multipass contracts actually
-      required by the retained scene's next extension.
+- [ ] Prove a **common resource floor** across the selected backend matrix:
+      vertex/index/uniform buffers, sampled textures and samplers, offscreen
+      color targets, depth, upload, copy/readback, and multipass execution.
+- [ ] Prove **modern capabilities** separately on each named supporting backend:
+      storage buffers, storage textures, and compute. RenderGraph requirements
+      are explicit; a backend below that capability returns a structured
+      `UnsupportedCapability` result and never emulates or silently lowers it.
 - [ ] Keep persistent resources as explicit imports with provider-owned
       physical identity and initial state; keep graph-created resources
       transient and reject unsupported physical aliasing.
+- [ ] Prove that repeated execution of one stable compiled graph reuses its
+      compatible physical transient resources across frames instead of creating
+      and destroying them per frame. Graph invalidation, extent changes, and
+      device loss retire the old realization only after known completion.
 - [ ] Prove state, last use, accepted-unknown work, device generation,
       recreation, and completion-driven retirement on the named backend matrix.
 - [ ] Freeze only capability facts demonstrated by those tests. Do not mirror
       a platform API or expose multi-queue policy.
 
-**Close when:** the same compiled graph contracts prove persistent imports and
-transient virtual resources across the selected native and browser backends,
-with deterministic readback and clean lifecycle diagnostics.
+**Close when:** the common floor, persistent imports, transient virtual
+resources, and stable-graph physical reuse pass every selected backend;
+modern-capability cases pass only their declared supporting backends and fail
+closed elsewhere, with deterministic readback and clean lifecycle diagnostics.
 
 ### Stage 3C / 0.13 — Logical asset core
 
@@ -309,17 +318,21 @@ contract.
 **TODO**
 
 - [ ] In `fluxel-bases`, prove typed logical identity, content generation,
-      explicit lookup/state, strong/weak ownership, duplicate-load coalescing,
-      stale-handle rejection, and structured failure.
+      explicit `Ready`/`Missing` state, strong/weak ownership, stale-handle
+      rejection, and structured production failure.
+- [ ] Let the asset core coordinate one producer per logical identity so
+      concurrent consumers await the same result. The core does not know
+      whether production used embedded bytes, generated data, file/network I/O,
+      or decoding; those source operations remain Loader responsibility.
 - [ ] Treat zero logical users as a reusable CPU-cache candidate, not immediate
       destruction; add size accounting and a small explicit budget/eviction
       policy without raw manager back-pointers or GPU knowledge.
 - [ ] Keep logical identity separate from loaded bytes and from every RHI
       resource. Do not make handle dereference hide generation/state changes.
 
-**Close when:** two real consumers share one logical content generation,
-duplicate work coalesces, stale identity fails closed, and cache collection is
-deterministic under the fixed budget workload.
+**Close when:** two real consumers share one logical content generation and one
+identity-level producer, stale identity fails closed, and cache collection is
+deterministic under the fixed budget workload without a Loader dependency.
 
 ### Stage 3D / 0.14 — Rendering residency
 
@@ -361,9 +374,10 @@ resource-manager internals.
 A restricted compatibility capability profile may be scheduled after Stage 3B
 and before mobile only when a second concrete implementation proves shared
 limits. It must describe a capability floor, not mirror a platform API.
-Physical transient pooling and aliasing remain separate profiling-driven
-optimization gates requiring virtual lifetime intervals, alias barriers, and
-completion-safe reuse.
+The stable compiled graph's own cross-frame physical reuse is part of Stage 3B.
+Cross-graph pools, reuse between distinct logical resources, and memory
+aliasing remain separate profiling-driven optimization gates requiring virtual
+lifetime intervals, alias barriers, and completion-safe reuse.
 
 ## Stage 4 — Windows playable runtime
 

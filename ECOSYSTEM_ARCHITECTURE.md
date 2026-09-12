@@ -74,8 +74,8 @@ Status has a precise planning meaning:
 | `fluxel-renderer` | `fluxel-rendering` | Existing | 3D submission, render packets, deterministic ordering, grouping, and lowering into RenderGraph | Existing workspace crate in `fluxel-rendering` |
 | `fluxel-base` | `fluxel-bases` | Candidate | Small stateless shared types and utilities such as bytes, encoding, identifiers, hashing, and version or protocol values | More than one real consumer needs a coherent shared utility boundary |
 | `fluxel-diagnostics` | `fluxel-bases` | Candidate | Structured diagnostic records, filtering, routing, and subscriptions | More than one layer needs shared diagnostics without a platform sink |
-| `fluxel-assets` | `fluxel-bases` | Candidate | Logical asset identity, typed handles, content generations, state, logical references, load deduplication, reusable CPU cache candidates, size accounting, and budget eviction | A demo proves cross-frame identity and reuse without importing GPU or platform policy |
-| `fluxel-loader` | `fluxel-bases` | Candidate | Loading state, deduplication, cancellation, failure, and CPU-data orchestration | A real loading path needs reusable policy independent of a platform reader |
+| `fluxel-assets` | `fluxel-bases` | Candidate | Logical asset identity, typed handles, content generations, `Ready`/`Missing` state, logical references, one producer per identity, reusable CPU cache candidates, size accounting, and budget eviction | A demo proves cross-frame identity and reuse without importing GPU, decoding, transport, or platform policy |
+| `fluxel-loader` | `fluxel-bases` | Candidate | File/URL/memory sources, asynchronous I/O and decode orchestration, cancellation, retry, progress, and source/decode errors | A real loading path needs reusable source policy independent of asset identity and cache policy |
 | `fluxel-time` | `fluxel-bases` | Candidate | Portable time values, timers, timeouts, and fixed-update semantics | A host loop proves reusable timing semantics |
 | `fluxel-input` | `fluxel-bases` | Candidate | Normalized keyboard, mouse, touch, wheel, and gamepad values and events | A playable or mobile demo proves shared input semantics |
 | `fluxel-image` | `fluxel-bases` | Unscheduled | Owned pixel data and portable image codecs | Image behavior becomes reusable outside one loading path |
@@ -114,11 +114,17 @@ Status has a precise planning meaning:
   graph, and records its actual last submission use. Only known completion may
   authorize RHI destruction or reuse; per-pass asset lookup is not a supported
   execution model.
+- Asset-level single-flight coordinates “produce this logical identity” without
+  owning the producer. Loader is one possible producer implementation and owns
+  I/O/decode/cancel/retry/progress; it does not create a second identity state
+  machine or decide asset cache residency. Transport-level request reuse, when
+  useful, remains a Loader detail distinct from asset-identity coordination.
 - RenderGraph-transient textures and buffers never enter the asset manager.
   RenderGraph owns their virtual liveness and alias legality; a private
-  device-generation physical pool may reuse compatible allocations only after
-  GPU-safe completion. Physical pooling or aliasing remains an optimization
-  gate and is not implied by logical resource lifetime.
+  compiled-graph realization reuses compatible physical allocations across
+  frames only after GPU-safe completion. Cross-graph pooling, reuse across
+  distinct logical resources, and memory aliasing remain separate optimization
+  gates and are not implied by logical resource lifetime.
 - Diagnostics schema, filtering, and routing belong in `fluxel-bases`.
   Rendering and host code emit structured records; native sinks belong in
   `fluxel-host`, while browser and mini-game sinks belong in `fluxel-jsbridge`.
@@ -132,6 +138,10 @@ Status has a precise planning meaning:
 - `fluxel-rhi` owns native barriers, queues, fences, commands, submission, and
   readback. RHI realizes portable RenderGraph contracts; RenderGraph does not
   import RHI or implement native synchronization.
+- The common resource floor and modern capabilities are separate facts. A
+  backend may implement the common floor without storage/compute; RenderGraph
+  declares requirements and receives structured unsupported-capability results
+  instead of requesting emulation.
 - A future restricted compatibility profile, if demonstrated, expresses a
   capability floor rather than mirroring one platform API. It may be extracted
   only after the modern minimum resource contract is proved and a second real
