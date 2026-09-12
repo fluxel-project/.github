@@ -156,6 +156,12 @@ completion tickets. The final commits are
 and [`fluxel-jsbridge` v0.2.0](https://github.com/fluxel-project/fluxel-jsbridge/releases/tag/v0.2.0).
 The downloaded evidence archive is 60,347 bytes with SHA-256
 `94280a7ad6cccf518a1c8975326fe847f448956681a1c97de93955d72691b8fd`.
+The compatible rendering-only correctness release
+[`v0.10.1`](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.10.1)
+at `b7b6504a8cbf9568335e9f4bbe3f7335b7a764f6` closes recovery/disposal commit
+points without adding a rendering feature or changing the JS bridge revision.
+Its evidence archive is 43,974 bytes with SHA-256
+`7e78ba31b2df6d78d5ac80bda2584238ac78c20ec50f2741053072b8afbc72ae`.
 This does not authorize a generic-browser or mini-game claim.
 
 ### Stage 3 — Resource foundation and scene API

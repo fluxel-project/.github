@@ -37,13 +37,15 @@ objects. Dependency direction remains `fluxel-jsbridge -> fluxel-rendering`.
 - At most three submissions are live. A ticket retires only after its matching
   `queue.onSubmittedWorkDone()` settlement; RAF, resize, visibility, Promise
   creation, and callback scheduling are not completion.
-- Device loss stops submission. Recovery requests a new adapter/device,
+- The controlled `device.destroy()` loss path stops submission. Recovery requests a new adapter/device,
   rebuilds all device-local objects, configures only the latest non-zero canvas
   extent, and advances device generation. Resize changes canvas epoch but does
   not claim ticket completion.
 - Async callbacks are generation/token scoped. Disposing cancels new work,
-  prevents stale recovery from reviving RAF, awaits the terminal queue outcome,
-  and reports loss as loss rather than clean completion.
+  prevents stale recovery from reviving RAF, joins any in-flight recovery,
+  awaits active and detached completion, and reports loss as loss rather than
+  clean completion. `Disposed` means no submission, recovery, callback producer,
+  listener, or future candidate commit remains.
 
 ## 0.10 TODO
 
@@ -79,6 +81,18 @@ SHA-256 `94280a7ad6cccf518a1c8975326fe847f448956681a1c97de93955d72691b8fd`.
 The WebGPU adapter reported AMD/RDNA3 and configured `bgra8unorm`; generation
 advanced from 1 to 2 with expected loss reason `destroyed`, followed by a
 terminal `Disposed` state and clean structured diagnostics.
+
+The compatible corrective release
+[`fluxel-rendering` v0.10.1](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.10.1)
+binds commit `b7b6504a8cbf9568335e9f4bbe3f7335b7a764f6` to the same named target and
+unchanged JS bridge revision. It makes disposal join the in-flight recovery,
+publishes the replacement device facts and generation only at the successful
+candidate commit point, and ends a Rust state borrow before browser resource
+destruction. Its exact-SHA DX12/Vulkan conformance passed 83/83 and its WebGPU
+and WebGL2 lifecycle regressions passed. The downloaded evidence ZIP is 43,974
+bytes with SHA-256
+`7e78ba31b2df6d78d5ac80bda2584238ac78c20ec50f2741053072b8afbc72ae`.
+This supplements rather than rewrites the original v0.10.0 evidence record.
 
 ## Non-goals and closure boundary
 

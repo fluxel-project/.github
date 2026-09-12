@@ -234,6 +234,12 @@ The durable releases are
 and [`fluxel-jsbridge` v0.2.0](https://github.com/fluxel-project/fluxel-jsbridge/releases/tag/v0.2.0).
 The downloaded `fluxel-rendering-v0.10.0-evidence.zip` is 60,347 bytes with
 SHA-256 `94280a7ad6cccf518a1c8975326fe847f448956681a1c97de93955d72691b8fd`.
+The compatible corrective release
+[`fluxel-rendering` v0.10.1](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.10.1)
+at `b7b6504a8cbf9568335e9f4bbe3f7335b7a764f6` joins in-flight recovery during
+terminal disposal and publishes replacement-device facts only at their commit
+point. Its exact-SHA native and named-browser regressions pass; it supplements,
+rather than replaces, the original closure evidence.
 
 ## Stage 3 — Resource foundation and scene API
 
@@ -266,7 +272,10 @@ No new rendering feature belongs in this closure.
 - [ ] Record every integration repository SHA/tag and lock input; a producer
       contract change must build and test its affected pinned consumer.
 - [ ] Split browser manual frame submission from last-frame observation. Loop
-      ownership must not change a command into a query.
+      ownership must not change a command into a query. `requestFrame()` asks
+      for one submission opportunity and returns an explicit submitted/blocked/
+      terminal outcome; it neither promises immediate submission nor reads the
+      last report. `lastFrameReport()` is a query and never submits.
 - [ ] Make JS compute CSS/DPR policy while rendering WASM/RHI alone mutates the
       canvas drawing-buffer extent.
 - [ ] Move proof-only cross-crate APIs out of documentation-hidden public
@@ -274,6 +283,16 @@ No new rendering feature belongs in this closure.
       boundary.
 - [ ] Share upper lifecycle vocabulary where semantics truly match, while
       keeping each backend's completion/loss mechanism private.
+- [ ] Make replacement device, queue, format, adapter metadata, generation, and
+      device-affine objects one candidate transaction. Failed or stale attempts
+      publish none of those facts.
+- [ ] Define terminal disposal by absence of live work, not by an enum alone:
+      after the Promise settles there is no active submission, detached
+      completion, recovery attempt, stale callback producer, RAF/listener, or
+      future GPU-object commit.
+- [ ] Audit callback-capable FFI so no Rust dynamic borrow or lock guard crosses
+      a browser call. Add deterministic deferred-operation tests for recovery,
+      disposal, completion, resize, visibility, and candidate-install failure.
 - [ ] Reduce repository READMEs to current capability and recommended usage;
       this roadmap remains the stage/status authority.
 
@@ -281,6 +300,9 @@ No new rendering feature belongs in this closure.
 API, command/query and resize ownership are unambiguous, and fast CI compiles
 the real cross-repository composition. Existing real-target support must remain
 unchanged and affected release oracles must pass.
+
+This is an ecosystem milestone, not a shared package version. Each repository
+releases only for its actual public changes and keeps its own version sequence.
 
 ### Stage 3B / 0.12 — Minimum GPU resource closure
 
