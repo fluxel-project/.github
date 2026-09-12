@@ -281,8 +281,10 @@ No new rendering feature belongs in this closure.
 - [ ] Move proof-only cross-crate APIs out of documentation-hidden public
       semver surfaces into an explicitly supported or non-published internal
       boundary.
-- [ ] Share upper lifecycle vocabulary where semantics truly match, while
-      keeping each backend's completion/loss mechanism private.
+- [ ] Use `Active`, `Suspended`, `Lost`, `Recovering`, `Disposing`, `Disposed`,
+      and `Poisoned` as the canonical upper lifecycle vocabulary where each
+      term truly applies. Identically named JS producer and RHI device states
+      need not transition together; backend completion/loss remains private.
 - [ ] Make replacement device, queue, format, adapter metadata, generation, and
       device-affine objects one candidate transaction. Failed or stale attempts
       publish none of those facts.
