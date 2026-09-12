@@ -8,8 +8,8 @@ promise to create every named crate or compatibility layer.
 canvas ownership, candidate-device publication, terminal disposal, public
 adapter boundaries, and cross-repository CI without adding a rendering
 feature. The released rendering and JS-bridge commits are
-`dba2e4a95e1319d29b707cfb831fa49ddf0e87ef` and
-`c34dd92e69c4505fb1c08bb8868ca3c447c608cd`; Host CI is
+`d2fc277d5b6f4faa18477fba6142027ca7d8dabf` and
+`c010016701f566123040d2735de1c2b9549bdca2`; Host CI is
 `7d43134460217c636d8881dbf76771e494c19e28`. The underlying named-target
 WebGPU claim remains [Stage 2.2](stages/stage-02-webgpu.md).
 
@@ -292,8 +292,9 @@ No new rendering feature belongs in this closure.
       completion, recovery attempt, stale callback producer, RAF/listener, or
       future GPU-object commit.
 - [x] Audit callback-capable FFI so no Rust dynamic borrow or lock guard crosses
-      a browser call. Add deterministic deferred-operation tests for recovery,
-      disposal, completion, resize, visibility, and candidate-install failure.
+      a browser call. Use production predicates plus deterministic interleaving
+      models for recovery, disposal, completion, resize, visibility, and
+      candidate-install failure.
 - [x] Reduce repository READMEs to current capability and recommended usage;
       this roadmap remains the stage/status authority.
 
@@ -314,10 +315,27 @@ evidence passed against the pinned JS-bridge revision. The downloaded evidence
 archive is 71,379 bytes with SHA-256
 `a8564b6431a41c1e37e0f52f1c4a577815f90682c71d5d80872c75e625387f1d`.
 
+The compatible review-gap patches are
+[`fluxel-rendering` v0.11.1](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.11.1)
+at `d2fc277d5b6f4faa18477fba6142027ca7d8dabf` and
+[`fluxel-jsbridge` v0.3.1](https://github.com/fluxel-project/fluxel-jsbridge/releases/tag/v0.3.1)
+at `c010016701f566123040d2735de1c2b9549bdca2`. They add a pinned real-WebGPU
+Chrome integration job beside WebGL2, report a coalesced manual frame request
+as `already-scheduled`, and correct next-series documentation without changing
+the renderer feature or supported-target claims. Rendering run `34701624449`
+passed all 17 jobs; its exact-SHA DX12+Vulkan gate passed 83/83 and both named
+Windows Chrome browser gates passed. The downloaded v0.11.1 evidence archive
+is 65,515 bytes with SHA-256
+`fe2c5b9ae4a206fd32a3157e5bfad40012689a6b3983321d2e1576b9193b02bf`.
+
 ### Stage 3B / 0.12 — Minimum GPU resource closure
 
 **TODO**
 
+- [ ] Before changing the resource contract, add an RHI-private injectable
+      browser-request provider and wasm browser tests which defer/resolve/reject
+      the actual production `requestAdapter`/`requestDevice` recovery path.
+      A duplicate reducer or JavaScript-only fake does not close this gate.
 - [ ] Prove a **common resource floor** across the selected backend matrix:
       vertex/index/uniform buffers, sampled textures and samplers, offscreen
       color targets, depth, upload, copy/readback, and multipass execution.
