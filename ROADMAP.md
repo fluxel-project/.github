@@ -5,10 +5,14 @@ runtime. “Three-like” describes approachable scene concepts, not Three.js AP
 compatibility. This is an execution map, not a release schedule or a promise
 to create every named crate.
 
-**Current target:** 0.9 / Stage 2.1: retain the Stage 1 scene in WebGL2 on
-Windows 11 x64, Google Chrome Stable `153.0.8010.36`. Microsoft Edge 153 may
-provide auxiliary compatibility evidence only; it does not widen the support
-claim. The execution contract is in [Stage 2: Web](stages/stage-02-web.md).
+**Latest closure:** 0.10 / Stage 2.2: retain the Stage 1 scene in WebGPU on
+Windows 11 x64, Google Chrome Stable `153.0.8010.36` on the AMD Radeon 780M
+driver `32.0.21028.2002`. The final rendering and JS-bridge commits are
+`8d18080efb9c14cc14ef05861660f8a7ed856309` and
+`65631997dbdc34c3ad2b44c91a099b507c72ead9`.
+This is a named-target WebGPU claim only; it neither widens WebGL2 support nor
+closes the separately unselected mini-game gate. See
+[Stage 2.2: WebGPU](stages/stage-02-webgpu.md).
 
 Development follows the next visible demo closure, not the layer map. Reuse
 and extend one scene and application wherever possible. Extract a crate only
@@ -149,8 +153,9 @@ diagnostic, and baseline evidence without unexplained validation errors.
 
 Keep the Stage 1 scene and expected image. Each substage names its real target
 before implementation; it does not authorize the later WebGPU or mini-game
-gate. Stage 2's detailed execution contract starts with
-[Stage 2: Web](stages/stage-02-web.md).
+gate. Its completed browser substages have separate execution contracts:
+[Stage 2.1: WebGL2](stages/stage-02-web.md) and
+[Stage 2.2: WebGPU](stages/stage-02-webgpu.md).
 
 **Boundary:** support WebGL2, WebGPU, and one named mini-game host separately.
 Do not claim generic web or mini-game support, redesign native APIs around web
@@ -175,9 +180,10 @@ repository gains a generic host contract.
       and context recovery, resource rebinding, and scoped package, startup,
       CPU-submission, and memory measurements. Edge 153 is auxiliary evidence
       only, not another supported browser claim.
-- [ ] 2.2 WebGPU: the same scene and expected output, surface reconfiguration,
-      device-loss behavior, and portable RenderGraph semantics without a public
-      multi-queue API.
+- [x] 2.2 WebGPU / 0.10: on its named Chrome/Windows/AMD target, preserve the
+      same scene and expected output through canvas reconfiguration,
+      completion-bounded submission, device-loss/recovery, and portable
+      RenderGraph semantics without a public multi-queue API.
 - [ ] 2.3 One later, explicitly selected real mini-game host: prove device
       startup, lifecycle, canvas or surface, minimal input, packaged resource
       paths, and foreground or background behavior. This target is not chosen
@@ -202,6 +208,23 @@ only: WebGPU and a named mini-game host remain required to close Stage 2.
 The durable releases are
 [`fluxel-rendering` v0.9.0](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.9.0)
 and [`fluxel-jsbridge` v0.1.0](https://github.com/fluxel-project/fluxel-jsbridge/releases/tag/v0.1.0).
+
+**2.2 release result:** the same retained black/red/green/blue scene
+has completed the named Chrome WebGPU lifecycle: stable rendering, resize,
+zero-size/restore, hidden/visible, controlled `device.destroy()` loss,
+recovery into a new device generation, and async dispose. The WebGPU path keeps
+canvas context, device, queue, pipeline/buffer objects, completion tickets,
+and recovery private to rendering WASM/RHI; the JS bridge owns only DOM
+lifecycle and one RAF. The candidate evidence records bounded `N=3`
+completion-driven admission, diagnostics, scoped measurements, and visual plus
+pixel/frame-marker samples. It is evidence for 2.2 only: WebGL2 remains its
+own 2.1 closure and the mini-game gate remains open.
+
+The durable releases are
+[`fluxel-rendering` v0.10.0](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.10.0)
+and [`fluxel-jsbridge` v0.2.0](https://github.com/fluxel-project/fluxel-jsbridge/releases/tag/v0.2.0).
+The downloaded `fluxel-rendering-v0.10.0-evidence.zip` is 60,347 bytes with
+SHA-256 `94280a7ad6cccf518a1c8975326fe847f448956681a1c97de93955d72691b8fd`.
 
 ## Stage 3 — Three-like API validation
 

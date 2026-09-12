@@ -6,10 +6,11 @@ compatibility. Rust rendering and host contracts are authoritative. Development
 follows visible demo closure rather than completing architectural layers in
 advance.
 
-> **Latest closure:** 0.9 / Stage 2.1 retains the Stage 1 scene in WebGL2 on
-> Windows 11 x64, Google Chrome Stable `153.0.8010.36`. Microsoft Edge 153 is
-> auxiliary compatibility evidence only and does not widen the support claim;
-> WebGPU and a named mini-game host remain separate Stage 2 gates.
+> **Latest closure:** 0.10 / Stage 2.2 retains the Stage 1 scene in WebGPU on
+> its named Windows 11 x64, Google Chrome Stable `153.0.8010.36`, AMD Radeon
+> 780M target. This adds only that named WebGPU claim: the 0.9 WebGL2 closure
+> remains separate, and the mini-game host still prevents Stage 2 as a whole
+> from closing.
 
 ## What Fluxel is
 
@@ -127,10 +128,13 @@ specific to named browsers, backends, hosts, and devices.
 
 - [x] 0.9 / WebGL2: close the retained scene on Windows 11 x64, Google Chrome
   Stable `153.0.8010.36`; Edge 153 is auxiliary evidence only.
-- [ ] Later: close WebGPU as its own named-target gate.
+- [x] 0.10 / WebGPU: close the same scene on its named Chrome/Windows/AMD
+  target with completion-bounded submission, canvas reconfiguration,
+  device-loss/recovery, and async disposal evidence.
 - [ ] Later: close one explicitly selected mini-game host on a real device.
 
-See the [Stage 2 Web execution guide](https://github.com/fluxel-project/.github/blob/main/stages/stage-02-web.md).
+See the [Stage 2.1 WebGL2 execution guide](https://github.com/fluxel-project/.github/blob/main/stages/stage-02-web.md)
+and [Stage 2.2 WebGPU execution guide](https://github.com/fluxel-project/.github/blob/main/stages/stage-02-webgpu.md).
 
 `fluxel-rendering` candidate `098ee1bd5d87ef17ba2cc8ec1031636b3e4e57d3` and
 `fluxel-jsbridge` candidate `db6361fbc015522bf8abf37919da45a48a7f0daa` complete
@@ -142,6 +146,18 @@ WebGPU, generic browser, or mini-game support.
 The corresponding releases are
 [`fluxel-rendering` v0.9.0](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.9.0)
 and [`fluxel-jsbridge` v0.1.0](https://github.com/fluxel-project/fluxel-jsbridge/releases/tag/v0.1.0).
+
+The 0.10 release separately closes the named WebGPU browser target:
+the retained RGB scene survived resize, zero-size/restore, visibility,
+controlled destroyed-device loss/recovery, and async disposal with bounded
+completion tickets. The final commits are
+`8d18080efb9c14cc14ef05861660f8a7ed856309` and
+`65631997dbdc34c3ad2b44c91a099b507c72ead9`; the releases are
+[`fluxel-rendering` v0.10.0](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.10.0)
+and [`fluxel-jsbridge` v0.2.0](https://github.com/fluxel-project/fluxel-jsbridge/releases/tag/v0.2.0).
+The downloaded evidence archive is 60,347 bytes with SHA-256
+`94280a7ad6cccf518a1c8975326fe847f448956681a1c97de93955d72691b8fd`.
+This does not authorize a generic-browser or mini-game claim.
 
 ### Stage 3 — Three-like API validation
 
@@ -202,6 +218,7 @@ cascade, or a general reactive framework.
 - [Evidence policy](https://github.com/fluxel-project/.github/blob/main/EVIDENCE_POLICY.md)
 - [Stage 1 Windows guide](https://github.com/fluxel-project/.github/blob/main/stages/stage-01-windows.md)
 - [Stage 2 Web guide](https://github.com/fluxel-project/.github/blob/main/stages/stage-02-web.md)
+- [Stage 2 WebGPU guide](https://github.com/fluxel-project/.github/blob/main/stages/stage-02-webgpu.md)
 
 Participating repositories should maintain local, ignored `AGENTS.md` guidance
 for ownership, modification locations, focused verification commands, and
