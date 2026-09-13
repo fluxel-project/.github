@@ -332,33 +332,47 @@ is 65,515 bytes with SHA-256
 
 **TODO**
 
-- [ ] Before changing the resource contract, add an RHI-private injectable
+- [x] Before changing the resource contract, add an RHI-private injectable
       browser-request provider and wasm browser tests which defer/resolve/reject
       the actual production `requestAdapter`/`requestDevice` recovery path.
       A duplicate reducer or JavaScript-only fake does not close this gate.
-- [ ] Prove a **common resource floor** across the selected backend matrix:
+- [x] Prove a **common resource floor** across the selected backend matrix:
       vertex/index/uniform buffers, sampled textures and samplers, offscreen
       color targets, depth, upload, copy/readback, and multipass execution.
-- [ ] Prove **modern capabilities** separately on each named supporting backend:
+- [x] Prove **modern capabilities** separately on each named supporting backend:
       storage buffers, storage textures, and compute. RenderGraph requirements
       are explicit; a backend below that capability returns a structured
       `UnsupportedCapability` result and never emulates or silently lowers it.
-- [ ] Keep persistent resources as explicit imports with provider-owned
+- [x] Keep persistent resources as explicit imports with provider-owned
       physical identity and initial state; keep graph-created resources
       transient and reject unsupported physical aliasing.
-- [ ] Prove that repeated execution of one stable compiled graph reuses its
+- [x] Prove that repeated execution of one stable compiled graph reuses its
       compatible physical transient resources across frames instead of creating
       and destroying them per frame. Graph invalidation, extent changes, and
       device loss retire the old realization only after known completion.
-- [ ] Prove state, last use, accepted-unknown work, device generation,
+- [x] Prove state, last use, accepted-unknown work, device generation,
       recreation, and completion-driven retirement on the named backend matrix.
-- [ ] Freeze only capability facts demonstrated by those tests. Do not mirror
+- [x] Freeze only capability facts demonstrated by those tests. Do not mirror
       a platform API or expose multi-queue policy.
 
 **Close when:** the common floor, persistent imports, transient virtual
 resources, and stable-graph physical reuse pass every selected backend;
 modern-capability cases pass only their declared supporting backends and fail
 closed elsewhere, with deterministic readback and clean lifecycle diagnostics.
+
+**0.12 release result:** [`fluxel-rendering` v0.12.0](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.12.0)
+at `69d75cbc6008acbf6bfb547733410ae762a3b863` closes Stage 3B. Its
+[CI run](https://github.com/fluxel-project/fluxel-rendering/actions/runs/34740447079)
+and retained `manifest.json` (18,340 bytes, SHA-256
+`ee92eb7c6e73294788ab01a6f49b45dad10a6a8d9df1e9e6d7da9926aaf42c67`) and
+`cargo.log` (556,429 bytes, SHA-256
+`490b17c0da8c6790c9df6aeab9caa11913eeca5852041bbdacf54712457ae6d5`) bind
+the exact source to clean-validation resource evidence. DX12, Vulkan, and
+WebGPU close the resource and compute floor; Vulkan storage-texture read/write
+has exact readback; DX12 supports storage write, while its AMD Radeon 780M
+storage-texture read returned zero and is disabled in production with a
+structured rejection. WebGL2 compute and storage return `UnsupportedCapability`
+without emulation or side effects.
 
 ### Stage 3C / 0.13 — Logical asset core
 
