@@ -381,22 +381,53 @@ contract.
 
 **TODO**
 
-- [ ] In `fluxel-bases`, prove typed logical identity, content generation,
+- [x] In `fluxel-bases`, prove typed logical identity, content generation,
       explicit `Ready`/`Missing` state, strong/weak ownership, stale-handle
       rejection, and structured production failure.
-- [ ] Let the asset core coordinate one producer per logical identity so
+- [x] Let the asset core coordinate one producer per logical identity so
       concurrent consumers await the same result. The core does not know
       whether production used embedded bytes, generated data, file/network I/O,
       or decoding; those source operations remain Loader responsibility.
-- [ ] Treat zero logical users as a reusable CPU-cache candidate, not immediate
+- [x] Treat zero logical users as a reusable CPU-cache candidate, not immediate
       destruction; add size accounting and a small explicit budget/eviction
       policy without raw manager back-pointers or GPU knowledge.
-- [ ] Keep logical identity separate from loaded bytes and from every RHI
+- [x] Keep logical identity separate from loaded bytes and from every RHI
       resource. Do not make handle dereference hide generation/state changes.
 
 **Close when:** two real consumers share one logical content generation and one
 identity-level producer, stale identity fails closed, and cache collection is
 deterministic under the fixed budget workload without a Loader dependency.
+
+**0.13 release result:** [`fluxel-bases` v0.13.4](https://github.com/fluxel-project/fluxel-bases/releases/tag/v0.13.4)
+at `22c4eb0e199575aa71b59f3abc6ec3f72d934b9a` closes Stage 3C. The series
+records its architecture in v0.13.0, then makes the API declarations, six
+numbered examples, and public-only contract tests executable in v0.13.1. v0.13.2
+implements the thread-safe logical-asset core: typed identities and immutable
+content generations; explicit missing, producing, ready, and failed observations;
+strong/weak ownership; deterministic stale-identity rejection and lowest-free-slot
+recycling; single-flight producer permits and attempt-bound waiters; replacement,
+failure, cancellation, retry, and structured errors; and explicit CPU resident-byte
+budgets with deterministic collection. It imports neither a Loader nor RHI/GPU
+objects.
+
+v0.13.3 adds the reproducible representative asset-store benchmark and accepted
+baseline: 1,024 acquire/observe/release uses of 4,096 prepared identities take
+48.322--48.563 us across three rounds with zero allocations; correctness,
+examples, Clippy, docs, and benchmark-smoke gates remain green. The final review
+patch, v0.13.4, fixes resident-byte-overflow completion so a failed commit no
+longer leaves its producer permit permanently in `Producing`; its regression
+proves that the identity recovers through the structured failure/retry path.
+
+The review also retained reproducible rejected-candidate evidence. `slotmap`
+cannot preserve the contract's deterministic lowest-free-slot reuse and checked
+generation exhaustion without a second source of truth. Interleaved testing of
+`parking_lot::Mutex` was inconclusive and would remove the public poisoning
+diagnostic while adding dependencies; `parking_lot::RwLock` was about 22% slower
+on the representative workload and adds atomic/locking complexity. Production
+therefore retains the hand-rolled deterministic slot store guarded by
+`std::sync::Mutex`. The exact-source [CI run](https://github.com/fluxel-project/fluxel-bases/actions/runs/34745220511)
+passed the release gates; benchmark evidence describes the CPU asset contract
+only, not GPU residency.
 
 ### Stage 3D / 0.14 — Rendering residency
 
