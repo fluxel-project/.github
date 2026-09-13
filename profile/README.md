@@ -6,11 +6,10 @@ and host contracts are authoritative. Development
 follows visible demo closure rather than completing architectural layers in
 advance.
 
-> **Latest closure:** 0.10 / Stage 2.2 retains the Stage 1 scene in WebGPU on
-> its named Windows 11 x64, Google Chrome Stable `153.0.8010.36`, AMD Radeon
-> 780M target. This adds only that named WebGPU claim: the 0.9 WebGL2 closure
-> remains separate, and the mini-game host still prevents Stage 2 as a whole
-> from closing.
+> **Latest closure:** 0.14 / Stage 3D adds renderer-private persistent GPU
+> residency for the fixed mesh/RGBA8 logical-asset path, backed by exact-source
+> DX12, Vulkan, Chrome WebGPU, and Chrome WebGL2 evidence. This does not add a
+> generic browser, loader, material, scene, or mini-game claim.
 
 ## What Fluxel is
 
@@ -173,13 +172,13 @@ and per-frame virtual/transient usage in RenderGraph.
 - [x] 0.11: consolidate CI, cross-repository contracts, browser command/query
   semantics, canvas resize ownership, and proof-only public surfaces without
   adding renderer features.
-- [ ] 0.12: prove a common raster/resource floor on all selected backends,
+- [x] 0.12: prove a common raster/resource floor on all selected backends,
   separate storage/compute capability gates on modern backends, and one stable
   compiled graph's completion-safe physical reuse across frames.
-- [ ] 0.13: prove logical typed asset identity, generation, one source-agnostic
+- [x] 0.13: prove logical typed asset identity, generation, one source-agnostic
   producer per identity, reuse, size accounting, and deterministic budget
   eviction with no GPU, I/O, or decode ownership.
-- [ ] 0.14: resolve persistent residency once during preparation, import it
+- [x] 0.14: resolve persistent residency once during preparation, import it
   into RenderGraph, and prove pending/committed generations, device recreation,
   last-use tracking, and completion-safe retirement.
 - [ ] Only then validate and freeze the smallest Rust-native `Scene`, `Camera`,
@@ -190,6 +189,25 @@ The 0.11 closure is published as
 [`fluxel-rendering` v0.11.0](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.11.0)
 and [`fluxel-jsbridge` v0.3.0](https://github.com/fluxel-project/fluxel-jsbridge/releases/tag/v0.3.0);
 Host contributed CI coverage without an artificial version bump.
+
+The 0.12 closure is published as
+[`fluxel-rendering` v0.12.0](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.12.0)
+at `69d75cbc6008acbf6bfb547733410ae762a3b863`, proving the common resource,
+compute capability, and stable-graph physical-reuse floor on its declared
+backend matrix. The 0.13 logical asset closure is published as
+[`fluxel-bases` v0.13.4](https://github.com/fluxel-project/fluxel-bases/releases/tag/v0.13.4)
+at `22c4eb0e199575aa71b59f3abc6ec3f72d934b9a` without GPU, I/O, or decode
+ownership.
+
+The 0.14 residency closure is published as
+[`fluxel-rendering` v0.14.0](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.14.0)
+at `ad37a14da5415b880c4746ce3238e83aa8ea933a`. Its
+[exact-source CI](https://github.com/fluxel-project/fluxel-rendering/actions/runs/34748806169),
+DX12/Vulkan conformance, and Chrome 153 WebGPU/WebGL2 archives prove one
+preparation-time resolution, immutable-generation replacement, device/context
+recreation from retained CPU content, and completion-safe retirement for the
+fixed mesh/RGBA8 path. No generic loader, material, scene API, or broader
+browser compatibility follows from that evidence.
 
 Stable-graph physical reuse belongs to 0.12. Cross-graph pooling, reuse across
 distinct logical resources, and memory aliasing remain separate profiling-

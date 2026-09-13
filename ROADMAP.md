@@ -4,23 +4,22 @@ Fluxel is a native-first, AI-friendly lightweight rendering runtime with an
 approachable scene API. This is an execution map, not a release schedule or a
 promise to create every named crate or compatibility layer.
 
-**Latest closure:** 0.11 / Architecture Closure freezes browser command/query,
-canvas ownership, candidate-device publication, terminal disposal, public
-adapter boundaries, and cross-repository CI without adding a rendering
-feature. The released rendering and JS-bridge commits are
-`d2fc277d5b6f4faa18477fba6142027ca7d8dabf` and
-`c010016701f566123040d2735de1c2b9549bdca2`; Host CI is
-`7d43134460217c636d8881dbf76771e494c19e28`. The underlying named-target
-WebGPU claim remains [Stage 2.2](stages/stage-02-webgpu.md).
+**Latest closure:** 0.14 / Stage 3D maps the fixed logical mesh/RGBA8 asset
+path to renderer-private persistent GPU residency. The released rendering
+commit is `ad37a14da5415b880c4746ce3238e83aa8ea933a`, consuming
+`fluxel-bases` v0.13.4 at `22c4eb0e199575aa71b59f3abc6ec3f72d934b9a`.
+It proves preparation-time resolution, generation-safe replacement, device
+recreation, and completion-safe retirement on the named DX12, Vulkan, WebGPU,
+and WebGL2 evidence paths; it does not add a generic loader, material, scene,
+or browser compatibility claim.
 
 Development follows the next visible demo closure, not the layer map. Reuse
 and extend one scene and application wherever possible. Extract a crate only
 when that demo proves an independently changing ownership boundary.
 
-**Next execution sequence:** 0.12 proves the minimum GPU resource contract;
-0.13 adds logical asset identity/reuse; 0.14 adds persistent GPU
-residency and completion-safe retirement; only then does the scene API freeze
-work begin. These are one-series closures, not patch-by-patch release loops.
+**Next execution sequence:** Stage 3E validates the smallest approachable
+Rust-native scene API over the now-proved logical asset and rendering residency
+boundaries. It must remain evidence-driven across affected supported targets.
 
 Read [development principles](DEVELOPMENT_PRINCIPLES.md) before changing the
 roadmap or public APIs. Read the [evidence policy](EVIDENCE_POLICY.md) before
@@ -433,20 +432,36 @@ only, not GPU residency.
 
 **TODO**
 
-- [ ] Map `(asset identity, content generation, device generation)` to a
+- [x] Map `(asset identity, content generation, device generation)` to a
       persistent rendering realization with explicit pending, committed, and
       retire-candidate states.
-- [ ] Resolve residency once during frame preparation, import the result into
+- [x] Resolve residency once during frame preparation, import the result into
       RenderGraph, and remove asset management from pass execution.
-- [ ] Commit uploads only after known completion; logical release merely
+- [x] Commit uploads only after known completion; logical release merely
       requests retirement, while graph-recorded last use plus submission
       completion authorizes RHI destruction or reuse.
-- [ ] Prove device-loss recreation retains logical assets while replacing only
+- [x] Prove device-loss recreation retains logical assets while replacing only
       the dead GPU generation.
 
 **Close when:** one shared mesh/image survives reuse, content replacement,
 device recreation, and completion-safe retirement without duplicate GPU
 realization or stale-generation access.
+
+**0.14 release result:** [`fluxel-rendering` v0.14.0](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.14.0)
+at `ad37a14da5415b880c4746ce3238e83aa8ea933a` closes Stage 3D. Its
+[exact-source CI run](https://github.com/fluxel-project/fluxel-rendering/actions/runs/34748806169)
+passed, and the retained native conformance manifest (18,564 bytes, SHA-256
+`c739af27309695874c66da828deb207999cbe3d4970569dca00322f6b0ed3396`) and
+Cargo log (556,804 bytes, SHA-256
+`ed79c7f54a55375e18934b5297e60f036d78157cbd8634c02540b17c90f8a570`)
+bind the release SHA to clean-validation DX12/Vulkan evidence. Chrome 153
+WebGPU and WebGL2 production-path archives are also attached at 39,088 bytes
+(`b864ddcf707dd03ff15768a1d68e7acc52ca757f5b35a65c7ea4d0040473cf57`)
+and 38,045 bytes
+(`b9d0eef9a198962f3afb3f81d54d71da7efe4804a9f519aa44429532cb3c5c91`).
+The closed scope is renderer-private residency for fixed mesh and RGBA8 image
+assets; loader/I/O, generic material and scene APIs, and a generic residency
+manager remain future work.
 
 ### Stage 3E — Approachable scene API validation
 
