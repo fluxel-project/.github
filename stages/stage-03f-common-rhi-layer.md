@@ -1138,6 +1138,45 @@ lesson on any other way:
   a neighbouring test's opening line that way, and both were caught only by reading
   the result.
 
+## 24. W2 step 4's owning half: the buffer table
+
+`native::vulkan::resource` lands the first resource table. Step 4's pure halves --
+`buffer`, `format` and `texture` -- each turn a portable description into a Vulkan
+create-info, and `memory`/`allocator` decide a memory type and suballocate it. What
+was missing was the thing that owns all of those facts at once, and `gpu-allocator`
+decides its shape rather than a preference doing so: `free` takes the `Allocation`
+**by value** and needs `&mut Allocator`, so a buffer cannot release its own memory
+from `Drop` -- a `Drop` body has no way to reach the allocator. The table that owns
+both is therefore the only thing that may release an allocation, and an `Allocation`
+is never handed out without that context.
+
+Three details are recorded because they are the ones a later reader would get wrong:
+
+- The table holds a clone of the device's `ash::Device`, because destroying a handle
+  needs it and `Drop` cannot take a parameter. The clone is a handle, not an owner --
+  the `VkDevice` is `VulkanDevice`'s -- so the owner of both states must place the
+  device after the table. That is stated by field order when the table is wired into
+  the device, the same rule `OpenedVulkan` already uses for the device/instance pair.
+- Teardown destroys the handle **first** and returns the allocation afterwards,
+  because destroying the handle is what unbinds the memory. That is the order the
+  borrowed Vulkan backend being replaced uses (`crates/wgpu-hal`, `destroy_buffer`),
+  so the owned path does not differ behaviorally from the one it supersedes.
+- The table is keyed by `BufferId`, which is `Eq + Hash` by construction and
+  deliberately not `Ord`: nothing about resource identity is ordered, so the records
+  live in a `HashMap` rather than having an ordering invented for them. Identity is
+  also enforced by the type rather than by a run-time kind test, and a stale id
+  resolves to `None` / `Unknown` instead of reaching the driver.
+
+The failure that cost this increment a compile iteration is worth recording too: the
+table was first written over a `BTreeMap`, and `ResourceId` has no `Ord`. The lesson
+is the cheap one from section 23.4 applied to this layer: a table keyed by a shared
+vocabulary type must be checked against that type's derives before it is written,
+not after.
+
+Proven on this machine: a real table creates two device-local buffers through the
+real allocator, looks them up by identity, refuses a zero size before the driver is
+reached, destroys one, and lets its `Drop` release the other.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
