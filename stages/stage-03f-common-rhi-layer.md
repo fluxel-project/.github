@@ -1177,6 +1177,48 @@ Proven on this machine: a real table creates two device-local buffers through th
 real allocator, looks them up by identity, refuses a zero size before the driver is
 reached, destroys one, and lets its `Drop` release the other.
 
+## 25. W2 step 4's texture half: the resource table owns textures too
+
+`native::vulkan::resource` was the buffer table; it is now the resource table. The
+texture half of step 4 -- image, memory, and the view a graph samples through -- is
+owned beside the buffers rather than in a second table, and that is a decision
+`gpu-allocator` forces as much as a preference does: the suballocator hands out whole
+`vkDeviceMemory` blocks, so a second allocator on one device would be a second set of
+blocks for memory the driver cannot move between them. One table also means one
+identity counter, so a buffer and a texture can never be handed the same physical
+identity.
+
+`texture::view_type` and `texture::view_create_info` are the pure half. One rule in
+them is worth recording because a first draft gets it wrong: a layered
+two-dimensional description takes a `TYPE_2D_ARRAY` view, not `TYPE_2D`, because a
+`TYPE_2D` view of a layered image silently selects layer zero -- a different
+resource than the graph named. The aspect is asked of the mapped `Vulkan` format
+rather than the portable one, so `format::is_depth` keeps its single source of
+truth, and the view spans exactly the levels and layers the image was created with
+(both floored at one, as the image lowering already floors them).
+
+Teardown gains one step in front of the buffer order: the view is destroyed before
+the image, because a view refers to an image and not the other way round, and the
+image is what unbinds the memory released only afterwards. Every failure path in
+`create_texture` undoes its own work in that same order, so a refused texture leaves
+neither a handle nor an allocation behind.
+
+One rename came with the second kind: `BufferError` is `ResourceError`, and it gained
+`UnsupportedTexture` and `View`. One table now answers for both kinds, and "the
+description is one this backend has not been taught" is a different sentence from
+"the size was zero", so the two stay separate variants for the same reason step 4's
+buffer half separated them.
+
+Proven on this machine: a real table creates a texture through the real allocator,
+looks its image and its view up by identity, creates a buffer with a different
+identity, and destroys both; and an unsupported description -- a multisample and a
+zero extent -- is refused before the driver is reached. The three required gates pass;
+`scripts/conformance.ps1` is the W2 close gate and is not re-run for a mid-step
+increment.
+
+Still owed by step 4: samplers (their descriptor lowering and their owner), which
+were deliberately not started here.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
