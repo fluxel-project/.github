@@ -991,7 +991,46 @@ fixed:
 `CopyApi` was also added: every current backend serves copies, and that is not a
 reason to put them in the base. The same logic already keeps `Graphics` a family.
 
-### 20.2 Vocabulary expansion stops here
+### 20.2 The task, restated after the re-cut
+
+The requested end state, recorded here so the plan and the work agree:
+
+1. finish **0.16** as re-cut in section 20 and push it;
+2. carry out **0.17** to a push as well — W6 GL family, W7 browser WebGPU,
+   W8a/W8 compressed formats, W9b five-backend capability convergence;
+3. then **correct the ecosystem documentation** so it describes the code as
+   actually delivered, and push that;
+4. **stop.** 0.18 is explicitly not in scope.
+
+Point 3 is not a formality. Three documents currently describe the old shape and
+will be wrong the moment 0.16 lands: this stage list, the RHI design
+(`documents/design-rhi.md`, which still describes the borrowed platform layer and
+the `DX12`/`Vulkan`-only `Backend` enum), and the workspace README's capability
+table. The interface contract
+(`documents/design-rhi-capability-api.md`) is the one document already written
+against the new shape.
+
+### 20.3 Honest size of the remaining work
+
+Recorded because the task now spans two releases, and because the numbers decide
+whether it can be done in one sitting:
+
+| Remaining | Nature |
+| --- | --- |
+| Vulkan steps 3-11 | allocation and binding, resources, descriptors and pipelines, SPIR-V, encoders and barriers, copies, submission and completion, surface, capability lowering — thousands of lines of `unsafe` FFI |
+| DX12, W3 | the same surface again on `windows` + DXC |
+| W4 | extraction, which only becomes possible once W2 and W3 both exist |
+| Metal, W5 | the third implementation, plus `objc2` |
+| W9a, W10a | lowering and dependency removal |
+| 0.17: W6, W7, W8a/W8, W9b | GL and WebGPU convergence, portable compressed-format vocabulary, five-backend lowering |
+
+Each of the steps completed so far was a self-contained piece with its own test and
+a driver check where one was possible. The rest is the same kind of work, repeated
+— there is no remaining unknown in the method, only volume. That is precisely why
+the loop in section 20.2 is the deliverable that matters: it is what makes the
+volume executable by whoever picks it up next.
+
+### 20.4 Vocabulary expansion stops here
 
 The remaining capability vocabulary is **not** to be extended further until the
 Vulkan vertical slice runs deep: memory, resources, pipeline and bindings,
