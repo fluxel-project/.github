@@ -11,7 +11,7 @@ the wasm entry-point change lands.
 | ID | Decision |
 | --- | --- |
 | A | **Replace, do not wrap, `wgpu-hal`.** DX12, Vulkan and Metal are implemented by this workspace on `windows`, `ash` and `objc2-metal`. Exit condition: `cargo tree -p fluxel-rhi` contains no `wgpu-hal`, `wgpu-types` or `fluxel-wgpu-hal`. |
-| B | **All five backends converge in 0.16**, including the GL family and the browser WebGPU adapter. Section 1 defines what "converge" means so that this does not become a lowest-common-denominator API. |
+| B | **The three native backends converge in 0.16** — DX12, Vulkan and Metal. The GL family and the browser WebGPU adapter are **0.17**, not 0.16. The common layer is still designed to the five-backend standard (no backend mechanism may leak into it), but 0.16 does not require five backends to be migrated onto it. Section 20 records the re-cut and why. |
 | C | **Metal evidence is a deferred local gate.** Metal is implemented here, compiled for the Apple target and covered by shared contract tests plus the mock. The real Metal run happens once, after push, on the owner's macOS machine. Local validation targets are Windows (DX12/Vulkan), Chrome (WebGL2/WebGPU), and an Android emulator as auxiliary GLES evidence. |
 | D | Compressed-texture closure rides in 0.16. |
 | E | `gpu-allocator` (+ `range-alloc` for DX12) is reused; no in-repo suballocator. |
@@ -936,7 +936,93 @@ declares. The list is therefore written in the enum's own declaration order, whi
 makes a future addition visible in review, and the test asserts what *is*
 checkable -- that every flag this backend needs is reachable.
 
-## 19. Open question for the facade migration
+## 19. Facade migration decided: retire the three tiers
+
+**Decision (i), taken.** `CopyBackend`, `ComputeBackend` and `RasterBackend` are
+retired as architecture. A device's usable verbs follow from which capability
+families it implements, and a graph states its needs in family terms. The three
+names may survive at most as an outermost compatibility adapter for pinned
+consumers; **no new code in `common`, in a native backend, or in RenderGraph may
+depend on them.**
+
+Why this one: keeping the tiers as architecture is what lets them multiply --
+`RasterBackend`, then `ComputeRasterBackend`, then `AdvancedRasterBackend` -- until
+the family design is bypassed by a parallel type hierarchy that no one removes
+because each individual step looked additive. `Copy` in particular becomes a
+capability row rather than a tier, which is exactly where the copy work belongs.
+
+## 20. Scope re-cut: 0.16 proves the model, it does not port every platform
+
+0.16 had drifted into "all five backends converge", which this document itself
+described as the largest single rendering change in the ecosystem. The scope is
+therefore cut to what actually tests the design:
+
+| Release | Packages |
+| --- | --- |
+| **0.16** | W1 common contract (done), W2 Vulkan, W3 DX12, W4 extract what Vulkan and DX12 genuinely repeat, W5 Metal, W9a native capability lowering, W10a delete the native `wgpu-hal` + documentation |
+| **0.17** | W6 GL family, W7 browser WebGPU, W8a/W8 compressed formats, W9b five-backend capability convergence, and the remaining rendering capability |
+
+`common` is still held to the five-backend standard — no backend mechanism may leak
+into it, and the family vocabulary is written for five — but 0.16 does not require
+five backends to implement it. The goal of 0.16 is now stated exactly: **not to
+finish every GPU platform, but to prove that Fluxel's own capability-oriented RHI
+holds up.**
+
+### 20.1 The family-splitting rule (frozen)
+
+**One independently negotiable batch of API per family, and one ledger row per
+family.** The test is not whether two verbs sound alike; it is whether they always
+appear, are always proved, and always fail together.
+
+Two violations of this rule were found in the interface as first written and are
+fixed:
+
+- **Indirect draw and indirect dispatch were merged into one trait** while the
+  ledger carried them as two rows, so a platform with one and not the other would
+  have had to write a refusing method for the other. They are two traits now:
+  `IndirectDrawApi` and `IndirectDispatchApi`.
+- **`GraphicsApi::draw` took an instance *range*,** which can express a non-zero
+  first instance -- the `FirstInstance` family. The verbs now take an instance
+  *count* and the first instance is fixed at zero. The general rule this
+  establishes: **a family's parameter space must not be able to name another
+  family's capability.** It applies next to base vertex, depth-stencil state,
+  multiview, variable-rate shading, mesh shaders and ray tracing.
+
+`CopyApi` was also added: every current backend serves copies, and that is not a
+reason to put them in the base. The same logic already keeps `Graphics` a family.
+
+### 20.2 Vocabulary expansion stops here
+
+The remaining capability vocabulary is **not** to be extended further until the
+Vulkan vertical slice runs deep: memory, resources, pipeline and bindings,
+recording, copy, submission and completion. Designing dozens of traits before
+running a real backend is exactly what produced the `requires_probe` mistake that
+the first Vulkan device falsified, and the fix was found by running code, not by
+reading the design.
+
+The intended loop, restated so it survives: principle → real Vulkan → the principle
+is contradicted → fix `common` → DX12 → find the genuine repetition → W4 extracts.
+
+## 21. Recording context: what the contract does and does not require
+
+An earlier statement of this design said a family handle *is* the recording
+context. That holds for a single-queue implementation but must not be frozen into
+the contract, because it would have to be undone the moment there are graphics,
+compute and transfer queues with parallel recording.
+
+The contract therefore requires only negotiation:
+`require::<F>(&device)` yields a handle that may be asked for `F`'s vocabulary. The
+current single-queue implementation may use that handle as its recording context;
+**the contract does not require capability negotiation and recording context to
+remain the same object.** A later multi-queue design can introduce a
+backend-private recorder and have the handle hand its verbs to it without
+replacing `Provides<F>`.
+
+Keeping `AsyncCompute` and `TransferQueue` as ledger rows with no queue API is
+consistent with this: the capability is stated, the queue assignment stays inside
+RenderGraph's lowering, and nothing above gets to choose a queue.
+
+## 22. The facade question, for the record
 `CopyBackend`, `ComputeBackend` and `RasterBackend` are **orthogonal** to capability
 families: they are static tiers of *capability combinations*, while a family is a
 single capability. Two options, and the choice changes the public surface:
@@ -945,7 +1031,7 @@ single capability. Two options, and the choice changes the public surface:
   implement", so a device's usable verbs follow from its families;
 - **(ii)** keep them as the public tier names and change only what is inside.
 
-Awaiting a decision. Neither blocks the base or `GraphicsApi`.
+Superseded by section 19, which takes option (i).
 
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
