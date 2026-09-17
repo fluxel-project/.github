@@ -1072,6 +1072,72 @@ single capability. Two options, and the choice changes the public surface:
 
 Superseded by section 19, which takes option (i).
 
+## 23. Automation: how one increment is chosen and reported
+
+A single agent session's context cannot be extended from inside it, so a task of
+this size is carried out by a chain of **fresh** agents, each with a full window,
+each resuming from the repositories rather than from a conversation. That works only
+if the repositories are a complete handoff, which is what sections 19-22 and the
+ordered step list in `crates/rhi/src/native/vulkan/mod.rs` are for.
+
+The launcher that runs the chain is local execution guidance and lives **outside**
+these repositories, as the development principles require. What belongs here is the
+contract each iteration obeys.
+
+### 23.1 Choosing the increment
+
+Take **the first unfinished step** in `crates/rhi/src/native/vulkan/mod.rs`'s
+ordered list. When that list is exhausted, take the first unfinished work package in
+section 20's table, in the order given. One increment per iteration, and nothing
+else: an iteration that starts two things and finishes one has produced a
+half-finished step for the next agent to discover.
+
+### 23.2 What must hold before the iteration ends
+
+- The tree **compiles**, and all three gates pass:
+  `clippy --workspace --all-targets --all-features --locked -- -D warnings`,
+  `clippy -p fluxel-rhi --no-default-features --locked -- -D warnings`, and
+  `test --workspace --all-targets --all-features --locked`.
+- Real-GPU steps additionally run `./scripts/conformance.ps1`.
+- **Both repositories are pushed**: `fluxel-rendering` and `.github`. Work that is
+  only committed, or only local, does not exist for the agent after you — this is
+  the failure mode that turns a chain into a loop.
+- If the increment cannot be finished compiling, **revert it**. A broken tree costs
+  the next iteration more than an unfinished step does.
+
+### 23.3 The report line
+
+Every iteration ends with exactly one line, so a chain can be read at a glance:
+
+```text
+DONE <the one increment finished> | NEXT <the next step by name> | BLOCKED <or none>
+```
+
+When 0.16 and 0.17 are both pushed and the ecosystem documents describe the code as
+actually delivered, the report line is followed by the words **`0.16 and 0.17
+closed`**, which is the launcher's stop marker. A chain that never emits it has not
+finished, and a chain that emits it while a gate is red has been lied to by its own
+last iteration — which is why the gates are listed before the reporting rule rather
+than after it.
+
+### 23.4 What a fresh agent must not relearn
+
+Recorded here because each iteration pays for a mistake once and cannot pass the
+lesson on any other way:
+
+- **Read `ash` and `gpu-allocator` from `~/.cargo/registry/src` before writing
+  FFI.** Across the increments done so far this held compile iterations to zero or
+  one, and it is what caught `create_device` returning an already-loaded device, the
+  private representation of `SampleCountFlags`, and the non-exhaustive portable
+  enums.
+- **A mapping over a portable enum returns `Option`**, because those enums may be
+  `non_exhaustive` and a wildcard arm would invent a value for a format or dimension
+  the backend has not been taught.
+- **Appending to a file anchors on the line after the insertion point**, never on a
+  block that may be replaced whole. Two increments in this session silently destroyed
+  a neighbouring test's opening line that way, and both were caught only by reading
+  the result.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
