@@ -1219,6 +1219,58 @@ increment.
 Still owed by step 4: samplers (their descriptor lowering and their owner), which
 were deliberately not started here.
 
+## 26. W2 step 4 complete: the sampler half
+
+`native::vulkan::sampler` and the sampler half of the resource table close step 4.
+A sampler is the one resource in this backend with nothing to bind and nothing to
+allocate, so its whole contract is a descriptor, a handle and an identity -- but it
+is the resource where the stage's preserved semantics are easiest to lose, because
+`Vulkan` spells the null comparison differently from DX12.
+
+`create_info` derives `compare_enable` from `compare.is_some()` and from nothing
+else, and writes `compare_op` **only** in the `Some` branch. The accident available
+on this API is not the DX12 one -- there is no `COMPARE_OP_NONE` to confuse with
+`ALWAYS` -- but its equivalent: enabling the comparison while filling the ordering
+from a default, which turns an ordinary filtering sampler into a shadow sampler
+exactly as the vendored DX12 patch exists to prevent. A test pins both directions,
+including that the disabled field keeps `Vulkan`'s default rather than some value
+ash happens to have, and two real-driver tests create one filtering and one
+comparison sampler, because a driver that refused the enabled branch is the one fact
+a pure test cannot see.
+
+Every other field of `VkSamplerCreateInfo` is pinned to the value that claims
+nothing: zero LOD bias, anisotropy disabled with `max_anisotropy` at 1.0 (the row is
+unproved, so enabling it would be a capability claim), the default border colour
+that no portable address mode can reach, and normalized coordinates. One refusal is
+added -- an inverted LOD range, which `Vulkan` requires to be ordered -- and it is
+refused here rather than at the driver for the same reason a zero-sized buffer is.
+
+The owner grew rather than appearing: `SamplerKind`/`SamplerId` joined
+`common::base::resource` because a sampler is a device-owned object a binding names
+and a stale generation must be refused before it can be bound, and the resource table
+took a third map on the one identity counter. Samplers are destroyed first in
+teardown and that placement claims nothing: a sampler refers to no image and binds no
+memory, so it has no dependency to honour. `ResourceError::Create` now names a
+sampler among the handles it covers, and `InvalidSampler` is a separate sentence
+from `UnsupportedTexture` because "this backend has not been taught the description"
+and "this description contradicts itself" are different things for a caller to fix.
+
+Proven on this machine: the table creates a linear-clamp and a comparison sampler,
+looks both up by identity, refuses an inverted LOD range before the driver is
+reached, destroys one, and lets its `Drop` release the other; both samplers reach a
+real `VkSampler` and are destroyed. The three required gates pass.
+`scripts/conformance.ps1` is the W2 close gate and is not re-run for a mid-step
+increment.
+
+One process note, because section 23.4 already records its family: an edit that
+replaced a block ending in a test's `#[test] fn` line matched a second occurrence of
+that line elsewhere in the file and silently renamed a real-driver test to the
+bijection test's name. It was caught by reading the file back, not by the compiler --
+the body still compiled because both tests return `()`. Anchoring an append on a
+unique line, and reading the result, remains the rule.
+
+Step 4 is complete. Step 5 (descriptors and pipelines) is next.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
