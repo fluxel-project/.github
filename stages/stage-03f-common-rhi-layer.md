@@ -1507,6 +1507,96 @@ Both were caught by running the tests, not by review.
 The three required gates pass; `scripts/conformance.ps1` is the W2 close gate and is
 not re-run for a mid-step increment.
 
+## 30. W2 step 6: the retained WGSL lowered to SPIR-V
+
+`native::vulkan::wgsl` lands step 6. Decision F's two shader routes now both exist:
+caller-supplied SPIR-V is the passthrough `shader::create_module` step 5 already had,
+and WGSL is parsed, validated and written to SPIR-V by Naga's `wgsl-in` frontend and
+`spv-out` backend. The two meet in `wgsl::create_module`, which lowers when it has to
+and hands the words to the module creator, so the driver is only ever handed SPIR-V.
+The `naga/spv-out` feature is enabled by this crate's `vulkan` feature, which is the
+same condition the module is compiled under (`all(windows, feature = "vulkan")`).
+
+### 30.1 The dialect, entry-point, stage and profile checks come first
+
+Every refusal is a value returned before a `VkShaderModule` exists, and each names
+something a driver would not:
+
+- **dialect** — a payload the WGSL frontend cannot parse, carrying the frontend's
+  diagnostic rendered against the source. GLSL is the dialect the GL family accepts
+  natively; this backend lowers only WGSL.
+- **entry point** and **stage** — a name the module does not declare and a name
+  declared for another stage are different sentences. Naga's writer would collapse
+  both into `EntryPointNotFound`, so the check is made here; the found stage is
+  carried as Naga's own type, because a task, mesh or ray-tracing entry point is not
+  one this crate's closed `ShaderStage` can name, and saying so is more useful than
+  calling the entry point absent.
+- **profile** — the writer targets SPIR-V 1.0, the version the instance this backend
+  opens requests (`VK_API_VERSION_1_0`, step 1). A module needing more is refused by
+  the writer rather than handed to a driver that cannot load it.
+
+The stage mapping is exhaustive over the three-variant portable `ShaderStage` with no
+wildcard: a closed enum's new variant must be taught to the match. The reverse
+mapping is deliberately not written, because it would have to return `Option` —
+Naga declares stages this vocabulary does not.
+
+### 30.2 The writer options, and the default that is not neutral
+
+`naga::back::spv::Options::default()` sets `ADJUST_COORDINATE_SPACE`, which flips the
+Y coordinate of `BuiltIn::Position`. The borrowed Vulkan path being replaced does
+**not** set it, so inheriting the default would have flipped every retained recipe's
+geometry against the frozen oracle while compiling cleanly and passing every unit
+test. The options are therefore written field by field, so a field Naga adds later
+breaks this literal instead of being inherited. The decisions that carry behavior:
+
+| Field | Value | Why |
+| --- | --- | --- |
+| `lang_version` | `(1, 0)` | the version the opened instance requests |
+| `flags` | `FORCE_POINT_SIZE` only | a vertex module is lowered before the topology it will be paired with is known, `Points` is in the vocabulary, and the borrowed path always emits the built-in. `ADJUST_COORDINATE_SPACE` changes geometry, `CLAMP_FRAG_DEPTH` clamps an output no retained fragment writes, `LABEL_VARYINGS` writes decorations the specification does not require, and `DEBUG` would make the emitted words depend on the build profile rather than on the artifact a cache hashes |
+| `capabilities` | the seven the borrowed path treats as always available | `None` means "all capabilities are permitted", which would let a shader use `Float64` or `MultiView` on a device that enables no feature at all |
+| `use_storage_input_output_16` | `false` | the device enables no f16 feature, and this field is exactly that capability |
+| `fake_missing_bindings` + empty `binding_map` | `true` + empty | this backend keeps each artifact's own `@group`/`@binding` numbers, and an empty map plus this fallback **is** that identity mapping. With `false` and an empty map, every resource would be refused as a missing binding |
+| bounds policies | `Restrict` for index, buffer and image loads; `Unchecked` for binding arrays | the device enables no robust-access feature; binding arrays are not in this layer's vocabulary |
+
+`fake_missing_bindings` is the one field whose name is misleading enough to be worth
+stating: it is not a permission to invent a binding, it is the fallback that emits the
+binding the artifact declared when the map has no override.
+
+### 30.3 Two capability layers that are not duplicates
+
+Validation runs with `ValidationFlags::all()` and `valid::Capabilities::empty()`, so an
+artifact using a feature this device has not proved is refused before the writer runs.
+The writer's SPIR-V capability set is a second, distinct check: Naga's validator knows
+the portable feature set, while the writer decides which SPIR-V capabilities may
+appear in the emitted words.
+
+### 30.4 Proof
+
+Pure tests cover the retained triangle lowered for both its stages (and that one module
+lowered for two stages is not the same words twice), a retained storage-texture compute
+artifact, the stage-mismatch refusal, the unknown-entry-point refusal, a non-WGSL
+payload refused at parse, a module that parses but does not validate, and the
+deliberate option values (SPIR-V 1.0, no Y flip, the capability set, the identity
+binding fallback, the polyfilled workgroup zero-init). Against the real driver, a
+retained vertex artifact and a retained compute artifact are lowered and their modules
+created and destroyed, and a refused entry point is shown to fail as the lowering's
+error with no driver involvement.
+
+One of the increment's own test *assertions* was wrong rather than the code, and it is
+worth recording because the first guess reads as true: Naga's WGSL frontend refuses
+`return 1.0;` from a function declaring `-> vec4<f32>` **at parse**, because the
+automatic conversion is already rejected there, so that source cannot demonstrate the
+validator at all. A "parses but does not validate" case needs illegal-but-parseable
+input, and a zero workgroup dimension (`@workgroup_size(0)`) is one.
+
+The increment compiled with no iteration; the one clippy iteration was removing a test
+import the module did not need. The `ash`, `gpu-allocator`, `naga` `spv-out` and
+vendored `wgpu-hal` sources were read before the FFI and the option literal were
+written, which is the rule section 23.4 already records — and it is what caught
+`Options::default()`'s Y flip, which no compiler or unit test would have reported.
+
+Step 6 is complete. Step 7 (one command encoder with explicit transitions) is next.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
