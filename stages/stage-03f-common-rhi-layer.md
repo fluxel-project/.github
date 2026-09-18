@@ -2741,6 +2741,122 @@ and the multi-draw rows each arrive with the step that proves them -- and this
 lowering reflects each automatically, which is the point of reading the ledger rather
 than re-deriving the facts. Step 11 is not complete.
 
+## 43. W2 step 11's core-row half: the rows the created device already proves
+
+Step 11's next bounded piece records three more rows in the ledger the lowering
+reads: `Copy`, `IndirectDispatch` and `TimestampQuery`. All three are proved by
+facts the device-open path had already read, which is what makes them one
+increment rather than three: `get_physical_device_queue_family_properties` already
+returned the family's flags *and* its `timestamp_valid_bits`, and the `Vulkan` API
+version is the rest. No device feature was enabled, no extension structure was
+queried, and the increment compiled without an iteration.
+
+### 43.1 The one row that was claimed without being recorded
+
+`capability::capabilities` wrote `QueueCapabilities::new(true, compute, true,
+false)`: the queue's raster and copy flags were constants beside the queue, while
+compute already read the ledger. Copy being a constant was not a deliberate
+exception -- section 42.2 justified it as "the API version's own guarantee" -- but
+it meant the lowering could report a capability the ledger did not carry, and a
+caller reading the ledger and a caller reading the lowered value could disagree
+about the same device. The three flags are now reads of the same kind: `raster` is
+the `Graphics` row, `compute` the `Compute` row and `copy` the new `Copy` row. The
+test that pinned the old shape (the floor case, where raster and copy were both
+true with no optional row recorded) became the discriminating pair for the fix:
+with only `Graphics` recorded `copy` is false, and recording `Copy` turns it true.
+
+### 43.2 Three rows, one proof shape, and none of them needed a feature
+
+- **`Copy`** is core: `Vulkan` 1.0 guarantees `vkCmdCopyBuffer` and
+  `vkCmdCopyImage` on a graphics family, step 8 records both routes, and neither
+  the selected family nor a device feature gates them. It has no numeric floor of
+  its own, so `limits_satisfied` is stated `true` rather than borrowed from a
+  neighbouring limit -- tying a row to a fact it does not depend on is how a
+  second, unwritten rule gets introduced.
+- **`IndirectDispatch`** is core, and the borrowed path being replaced calls
+  `cmd_dispatch_indirect` with no gate at all. It arrives only beside a proved
+  compute row, and it keeps that row's numeric floor, because an indirect dispatch
+  is a dispatch: the two cannot disagree about whether this device can dispatch.
+- **`TimestampQuery`** comes from the family's own `timestamp_valid_bits` report,
+  which the specification fixes as either zero or a value in `36..=64`. `> 0` is
+  the predicate, and the report is carried on `SelectedQueue` as the driver's
+  number rather than flattened to a boolean at the selection site. The borrowed
+  path spells the same rule as `>= 36`; the difference is only in what a driver
+  reporting an undefined value would get.
+
+`SelectedQueue` gained the field, and that is a reporting change rather than a
+selection change: the rule is still "the first family whose flags contain
+graphics", and a family with a zero timestamp report is selected exactly as
+before. The doc says so where the field is declared, because the selector's
+previous doc named only `queue_count` as the field it does not consult, which had
+made "the selector consults the flags" the whole truth.
+
+### 43.3 The rows that stay absent, and the three different reasons
+
+The same increment fixed the boundary of what may be claimed later, because the
+rows still owed are owed for reasons that are not interchangeable:
+
+- **`StorageBuffer` and `StorageImage`** need a feature this backend leaves
+  disabled: `fragmentStoresAndAtomics` and `vertexPipelineStoresAndAtomics` gate
+  shader storage writes outside compute (the vendored `wgpu-hal` maps exactly that
+  pair from its `FRAGMENT_WRITABLE_STORAGE` and `VERTEX_WRITABLE_STORAGE`
+  downlevel facts), and `VkPhysicalDeviceFeatures` is opened all-zero. The
+  storage-buffer row describes read *and* write, so claiming it without those
+  features would be a claim a fragment-shader write falsifies. `StorageImage` adds
+  a per-format storage fact this call does not consult.
+- **`IndirectDraw`** is refused for the family-parameter-space reason section 20.1
+  fixed: `IndirectDrawApi::draw_indirect` takes a draw `count`, and a count above
+  one *is* `MultiDrawIndirect`, which needs the `multiDrawIndirect` feature. A
+  backend that decomposed the count into single draws would be writing a second,
+  unwritten implementation choice into a capability fact, which is what section
+  20.1 forbids.
+- **`MultiDrawIndirect`**, **`AnisotropicFiltering`**, **`Multiview`**,
+  **`AsyncCompute` and `TransferQueue`** keep the reasons section 42 already gave:
+  a feature that is not enabled, plan section 4's preserved closed row, and one
+  queue.
+
+A test asserts all eight stay both disabled and unexamined, which is the ledger's
+two different sentences for "refused" and "never asked".
+
+### 43.4 The lowering change, and what it now reads
+
+`capability::capabilities` reads `raster`, `copy` and the timestamp placement from
+the ledger, beside the compute, storage and indirect rows it already read.
+Timestamps lower to `TimestampCapabilities::PassBoundaries` only where the row is
+proved and stay `Unsupported` otherwise: a timestamp written by
+`vkCmdWriteTimestamp` outside a render pass is exactly the pass-boundary placement
+the graph contract names. `indirect_read` needed no change at all -- it already
+folded the three indirect rows, so proving `IndirectDispatch` widened it without a
+line being written, which is the point section 42.1 made about reading the ledger
+rather than re-deriving the facts.
+
+### 43.5 Proof
+
+Pure tests cover: `Copy` proved at creation with a `NotRequired` probe and a
+trivially satisfied floor; `IndirectDispatch` examined only beside a compute row
+and disabled when that row's own floor is unsatisfied; `TimestampQuery` arriving
+only from a non-zero valid-bit report, with a zero report leaving the row
+unexamined rather than negative; the eight feature-gated and preserved rows absent
+and unexamined; the selector carrying the timestamp report without consulting it;
+and the lowering's discriminating pairs for the copy flag and the timestamp
+placement. Against the real driver: the created device proves `Copy`, proves
+`IndirectDispatch` exactly where the family reports compute, proves
+`TimestampQuery` exactly where the family's valid-bit report is non-zero, reports
+the queue's copy flag from the ledger, and still proves no storage buffer and no
+indirect draw.
+
+The increment compiled with no iteration, and the `ash` 0.38 source was read
+before the field was added, which is where `QueueFamilyProperties::timestamp_valid_bits`
+being a `u32` was settled.
+
+The three required gates pass, and because the increment reads a real driver
+`scripts/conformance.ps1` was run as well and passes.
+
+Still owed by step 11: the storage rows (a device feature plus a per-format
+storage fact), the occlusion and elapsed query rows, and the draw-parameter rows
+(`BaseVertex`, `FirstInstance`) that arrive with the draw verbs and the family
+markers that would let a caller require them.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
