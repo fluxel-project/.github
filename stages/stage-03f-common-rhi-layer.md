@@ -1797,6 +1797,89 @@ counted fixture set is untouched.
 
 Step 8 is complete. Step 9 (submission and completion) is next.
 
+## 33. W2 step 9 complete: the fence, one submit, and the completion state machine
+
+Step 9 landed as `native::vulkan::submission`: one unsignaled fence per execution,
+one `vkQueueSubmit` on the device's single queue, and the completion observation
+that turns a fence's state into `CompletionStatus` through `common`'s disposition
+and lifetime rules. What the step deliberately does not contain is a non-blocking
+retirement path: reclaiming a quarantine is the RHI layer's job, and it arrives with
+the completion bundle that owns a `Submission`.
+
+### 33.1 The handoff is a type, not a rule
+
+The command encoder's own docs said step 9 owns "the handoff that keeps a finished
+buffer alive until its fence signals". `Encoder::finish` now returns a `Finished`,
+and `Finished` is the only value `submit` accepts. `Vulkan` accepts only an
+executable command buffer, so "submit a recording that has not ended" is
+unrepresentable rather than a run-time refusal: `finish` ends an open recording and
+passes an already-ended one through, so no call shape reaches the driver with a
+recording buffer. `Submission` then owns the `Finished` -- and therefore the command
+buffer -- beside the fence, which is the handoff stated as ownership rather than as a
+comment.
+
+### 33.2 The state machine is `common`'s, and `common`'s only
+
+Nothing here re-decides terminality. `Disposition::observe` is called with the status
+the fence produced, and `may_release` is what decides whether that status releases.
+`observe` returns its `AlreadyTerminal` for a submission whose resources are gone, so
+a second `status()` or `wait()` after a completed wait is refused rather than answered
+from a freed fence. `Disposition` is also what makes the accepted-unknown case work:
+it is `abandon()`ed, and `may_release` is false for `Abandoned`, so the bundle stays
+quarantined even though the reported status is `Failed`.
+
+### 33.3 Three pure lowerings, one of which is easy to get backwards
+
+The fence's answers are lowered by pure functions, so the cases a driver cannot be
+asked to produce are still testable:
+
+- `wait_outcome` separates `VK_TIMEOUT` from a driver result. A timeout is *work
+  still in flight* and reports `Pending`; a driver result is *completion cannot be
+  established* and reports `Failed`. Collapsing them would turn a slow frame into a
+  device loss.
+- `failure_of` names `VK_ERROR_DEVICE_LOST` and maps every other result to
+  `ExecutionFailed`. It constructs `CompletionFailure` rather than matching it
+  exhaustively, because the portable enum is `#[non_exhaustive]`.
+- `timeout_nanos` clamps a `Duration` too large for `u64` to `u64::MAX`, the
+  specification's "wait forever". Wrapping with `as u64` would turn the longest
+  possible wait into a short one, which is the unsafe direction for a completion
+  wait.
+
+The fence is created **unsignaled**, and that is a deliberate value rather than a
+default: a fence created signaled would make every submission look complete before
+the driver had run anything.
+
+### 33.4 Accepted-unknown is a rejection only after idle proves it
+
+`vkQueueSubmit` returning an error is not proof that nothing ran, so a rejection is
+reported as `SubmitError::Rejected` **only** after a successful `vkQueueWaitIdle`.
+Where idle cannot be established, the submission is returned live with the failure
+recorded and its disposition abandoned, and `Drop` then quarantines the command
+buffer and the fence by forgetting both instead of risking use after free. That is
+the plan's preserved semantic, and it is the shape the borrowed path being replaced
+uses when it forgets its bundle. A driver rejection that idle *does* clear releases
+the recording and destroys the fence in dependency order: command buffer first, fence
+second.
+
+### 33.5 Proof
+
+Pure tests cover the three lowerings, including the timeout/failure distinction and
+the clamped duration. Against the real driver: a real command pool records a real
+buffer copy, `finish` ends it, one submit is accepted, a ten-second fence wait
+reports `Complete`, the submission reports `is_terminal`, and both `status()` and
+`wait()` afterwards are refused as `AlreadyTerminal` -- the release being observed
+rather than assumed. A second test submits two executions on the one queue and both
+fences signal, which is "one submit per graph execution on logical queue 0"
+exercised twice.
+
+The increment compiled with no iteration. The `ash` 0.38 source was read before the
+FFI, which is where `wait_for_fences`'s `VkResult` return and `get_fence_status`'s
+`SUCCESS`/`NOT_READY` split were settled; the "wait forever" value itself is the
+specification's. The three required gates pass; `scripts/conformance.ps1` is the W2
+close gate and is not re-run for a mid-step increment.
+
+Step 9 is complete. Step 10 (surface) is next.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
