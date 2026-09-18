@@ -2510,6 +2510,124 @@ written.
 
 Step 10 is complete. Step 11 (capability lowering) is next.
 
+## 41. W2 step 11's per-format evidence half: the table and the query that fills it
+
+Step 11 is capability lowering. Its first bounded piece landed as two modules --
+`common::formats`, the evidence-carrying per-format fact table, and
+`native::vulkan::format_facts`, which lowers one `vkGetPhysicalDeviceFormatProperties`
+answer into those facts and records that answer for every format this backend maps.
+The rest of step 11 -- the remaining ledger rows, and the lowering that hands these
+facts to `fluxel_rendergraph`'s `DeviceCapabilities` -- remains owed.
+
+### 41.1 The shared shape is the GL family's, promoted rather than translated
+
+Section 9.7 recorded the finding that the native path's per-format facts
+(`wgpu_hal::TextureFormatCapabilities` bitflags plus predicates) and the GL family's
+(`GlFormatCapabilities`, an evidence-carrying row) are two different shapes rather
+than two spellings of one. `common::formats` promotes the GL shape: the same eight
+facts, an evidence value instead of a bitset, and the same two rules the GL table
+already enforces -- a zero sample count describes no resource, and a storage fact
+arrives only with operation evidence, because whether a format may be read or written
+through a storage image is precisely what a device has to be asked. A conflicting
+repeat is refused and an identical one is accepted, which is also the GL rule: two
+discoveries agreeing is not a contradiction, and silently keeping the later of two
+disagreeing rows would make the table depend on discovery order.
+
+Two pieces of the GL table are deliberately not copied:
+
+- **The compressed-format rule.** ADR-0011 refuses a compressed format any render,
+  blend, storage or copy claim, and the GL table enforces it at `record`. The portable
+  vocabulary cannot name a compressed format until W8a, so there is nothing to refuse
+  yet; the rule is stated where it will be enforced rather than given a predicate with
+  no format behind it.
+- **The resource kind.** A renderbuffer is a GL-family resource rather than a texture,
+  so the GL table keys on it. The shared table keys on `(format, sample count)`, which
+  is the key section 9.7 fixed, and the GL backend keeps its renderbuffer rows as an
+  internal detail mapping onto the same texture-shaped facts in W6.
+
+### 41.2 The table is a sequence, because `TextureFormat` is not `Ord`
+
+The portable format is `#[non_exhaustive]` and deliberately not `Ord`, so a
+`BTreeMap` keyed by it would have to invent an ordering -- the same mistake section 24
+already recorded for `ResourceId`, where the table was first written over a map type
+the key did not satisfy. A `HashMap` would avoid the invented order but replace it
+with a hasher-seeded one, and this table is compared and cached, so its iteration
+order has to be a function of its contents.
+
+It is therefore a `Vec` in insertion order, and that order is deterministic because
+the caller records from its own fixed list: `format::MAPPED`, promoted from
+`format.rs`'s test-only `ALL` so the list the format-evidence query iterates and the
+list `image_format` lowers are one list rather than two that can drift. A test pins
+what the type cannot: every listed format maps, and none is listed twice.
+
+### 41.3 One sample count, because the query has no per-count dimension
+
+`vkGetPhysicalDeviceFormatProperties` answers per format, not per sample count.
+This backend refuses every multisampled image description
+(`texture::image_create_info` returns `None` for `sample_count != 1`), so every fact
+read here belongs to `SINGLE_SAMPLE` and the table's per-count key stays able to hold
+the rows a later query proves. Recording a count this backend cannot create would be a
+capability claim with no object behind it; the multisampled rows arrive with
+`vkGetPhysicalDeviceImageFormatProperties`, which takes a usage and is the query that
+actually proves them.
+
+The lowering reads `optimal_tiling_features` and nothing else. Linear tiling and
+buffer features describe resources this layer cannot create -- every image is
+`OPTIMAL`, and no known format is a texel-buffer format -- so folding the three flag
+sets together would claim capabilities for an image shape the graph cannot name. The
+same reasoning drops the flags the portable table does not model (`BLIT_SRC`,
+`BLIT_DST`, the texel-buffer and chroma bits) instead of mapping them onto a
+neighbouring fact.
+
+### 41.4 What reading the `ash` 0.38 source settled before the FFI
+
+- `FormatFeatureFlags::TRANSFER_SRC` and `TRANSFER_DST` are **not** declared beside the
+  rest of that type in `bitflags.rs`: they are added by the unconditional
+  `VK_VERSION_1_1` block in `feature_extensions.rs`. A reader who checked only the
+  bitflags definition would conclude the copy facts cannot be read at all. The
+  vendored `wgpu-hal` uses them, which is what made the discrepancy worth resolving
+  rather than assuming.
+- There is no `SAMPLE_COUNT_n_BIT` format-feature constant anywhere in `ash` 0.38, and
+  the specification's `VkFormatProperties` has no per-count dimension to read; this is
+  what turned 41.3 from a preference into a fact.
+- `vk::FormatProperties` derives `Default`, `Copy` and `Clone` but **not** `PartialEq`,
+  so the tests assert fields rather than whole values -- the same family as the
+  `ImageSubresourceRange`, `BufferCopy` and `Win32SurfaceCreateInfoKHR` notes.
+- `get_physical_device_format_properties` returns `vk::FormatProperties` directly
+  rather than a `VkResult`, because the specification gives every format an answer.
+
+### 41.5 Proof
+
+Pure tests cover each optimal-tiling flag lowering to its own fact, a real `Vulkan`
+flag the table does not model (`BLIT_SRC`) lowering to none, both attachment kinds
+reaching the one `renderable` fact, the single `STORAGE_IMAGE` bit proving both
+storage directions, a storage fact passing the table's probe rule, a driver answer
+with no flags being a proved negative the table keeps rather than an absent row, and
+the table's own refusals: a zero sample count, a storage fact without operation
+evidence, and a disagreeing repeat that leaves the first row standing. `format.rs`
+also pins that the promoted list is taught and duplicate-free.
+
+Against the real driver: every format this backend maps is queried once and recorded
+in `MAPPED` order with `OperationProbed` evidence at sample count one, and the facts
+`Vulkan` makes mandatory are asserted from the driver's own answer --
+`R8G8B8A8_UNORM` sampled, renderable, blendable and copyable in both directions; its
+sRGB sibling sampled and renderable; `D32_SFLOAT` renderable and copyable in both
+directions and **not** blendable. A second discovery over the same adapter is accepted
+and leaves the table unchanged, which exercises the identical-repeat rule against real
+driver answers rather than synthetic ones.
+
+The increment compiled with no iteration, and the `ash` source was read before the FFI
+-- which is what found the `feature_extensions` location of the two transfer bits and
+the absence of a sample-count dimension, neither of which a compiler or a unit test
+would have reported.
+
+The three required gates pass. The increment reads a real driver, so
+`scripts/conformance.ps1` was run as well and passes; it creates and owns no GPU
+object, so what it proves here is that the hardware fixture set is unchanged.
+
+Still owed by step 11: the remaining ledger rows, and the lowering that hands these
+facts to `fluxel_rendergraph::DeviceCapabilities`.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
