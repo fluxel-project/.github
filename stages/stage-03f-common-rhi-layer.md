@@ -4338,6 +4338,102 @@ fixed-artifact pipeline and binding construction over this table; validation dia
 capture for the oracle's "programmatically empty diagnostics" clause; and the public
 `Device` / execution wiring that lets the frozen oracle run here.
 
+## 59. W2 step 14's RHI-facing open: the public facts and the public refusal
+
+Step 14's first owed item -- "the RHI-facing device that opens this backend" -- landed as
+`native::vulkan::rhi`, together with the value it reports: `OpenedVulkan` now carries the
+public `HardwareCapabilities` its discovery implies, and `rhi::open` is the entry point
+that answers in the public `OpenError` vocabulary.
+
+### 59.1 The facts half is pure, and it reads the device's own table
+
+`rhi::capabilities(limits, formats)` lowers two inputs this device already owns -- the
+adapter's numeric report and the per-format evidence table step 11 recorded before
+`vkCreateDevice` -- onto the five `rgba8_unorm_*` booleans and the eight numbers the
+public struct carries. It asks the driver nothing, cannot fail, and is the same split
+step 1's validation probe and step 7's barrier lowering use: the rule is pure, the call
+that feeds it is separate.
+
+The five per-format booleans are the two rows discovery recorded for `Rgba8Unorm` and its
+sRGB sibling at sample count one. A format no discovery examined has no row, and the
+public fact is the rejecting `false` -- which is the table's own direction: an unexamined
+pair and a proved negative are both unusable, and only one of them is an answer. The sRGB
+fact is read from its own row and never inferred from the UNORM one, because the retained
+linear-clamp recipe's legality depends on exactly that difference.
+
+One field differs from the borrowed path's spelling, and the difference is the API rather
+than the fact: `rgba8_unorm_storage_read_enabled` is the probed fact here. The HAL had to
+request `TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES` before its per-format answer meant
+anything, so it reported `read && requested`; `Vulkan` answers
+`vkGetPhysicalDeviceFormatProperties` with no feature to enable, so the probed row *is*
+the enabled fact, and reporting a gate this API does not have would be the invented value
+this plan keeps refusing.
+
+The eight numbers are copied unchanged, including the compute workgroup counts on a device
+whose selected family does not report compute. That is deliberate and it is the public
+struct's own contract ("raw capability facts from the selected native adapter"): whether a
+*domain* may be entered is the ledger's answer, recorded at creation and read by
+`require`, and gating these numbers on a row here would be a second place deciding one
+question.
+
+`OpenedVulkan` gains the value as a field built in `open::open` from the same limit set
+that selected the queue family and the *device's own* format table, so the public facts,
+the ledger and the limits are one discovery of one adapter rather than three readings that
+can disagree.
+
+### 59.2 The owning half speaks the public refusal, and creates nothing of its own
+
+`rhi::open` chains the already-verified `open::open` and lowers any failure through
+`open_error`. Two native sentences have an exact public counterpart and are mapped rather
+than flattened, because a caller acts on them differently: a validation facility that
+could not be verified is `OpenError::ValidationUnavailable` -- the fail-closed refusal the
+preserved-semantics table fixes -- and an absent adapter index is
+`OpenError::AdapterUnavailable`, which carries both numbers so "no such index" and "no
+adapter" stay different facts.
+
+Every other failure keeps its own diagnostic in `OpenError::NativeUnavailable`, rendered
+from the native error's `Debug` value and prefixed with the layer that produced it. The
+inner values are structured -- a `vk::Result`, a missing-layer name, a missing device
+extension -- so flattening them into prose here would discard the one thing a diagnostic
+needs, and folding them into a neighbouring variant would name a failure the driver did
+not report.
+
+### 59.3 What it deliberately does not do
+
+- **No route swap.** `crate::imp::open` still sends `Backend::Vulkan` through the borrowed
+  `wgpu-hal` path. Switching it now would make every execution verb -- resources, commands,
+  submission, upload, presentation -- meet a device none of them speaks yet, refusing work
+  the frozen oracle executes today.
+- **No baseline limit check.** The borrowed path refuses an adapter below the default
+  portable limits with `OpenError::RequiredLimitsUnavailable`; this backend has no
+  equivalent, and inventing one here would be a second rule about which numbers the RHI's
+  floor is made of. It arrives with the public `Device` wiring, where that floor is
+  defined.
+
+### 59.4 Proof
+
+Pure tests cover the fail-closed floor (an unexamined table and unavailable limits produce
+every boolean false and every number zero), the two rgba8 rows lowering field by field,
+the sRGB fact being absent rather than inherited when only the UNORM row exists, the
+storage-read and storage-read-enabled fields agreeing by construction in both directions,
+the eight numeric copies, the validation refusal and the absent-adapter refusal as their
+exact public values, and the two remaining layers keeping their own diagnostic with the
+backend name. Against the real driver, `rhi::open(Validation::Disabled, 0)` opens on this
+machine and the test asserts the hardware name and backend, that the numeric half is the
+same limit set the device was opened against, that `R8G8B8A8_UNORM` is filterable (a
+mandatory optimal-tiling fact, so a failure is a real disagreement), and that the storage
+fact equals the device's own table answer rather than a second query.
+
+The increment compiled with no iteration. The `ash` source was not needed -- no FFI is
+written -- so section 23.4's rule was satisfied by reuse. The three required gates pass.
+The increment opens a real device, so `scripts/conformance.ps1` was run as well and
+passes; it adds no `#[ignore]` fixture, so the gate's counted fixture set is unchanged.
+
+Still owed by step 14: the route swap and the baseline limit check, the staging upload
+path (the consumer step 8 deferred the buffer/image copy routes to), the fixed-artifact
+pipeline and binding construction over this table, validation diagnostics capture, and the
+public `Device` / execution wiring.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
