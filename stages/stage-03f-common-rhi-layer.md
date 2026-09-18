@@ -2232,6 +2232,109 @@ GPU gate was run as well: `scripts/conformance.ps1` passes.
 Step 10 still owes the acquire lease, present, reconfigure, and the
 unpresented-acquire quarantine.
 
+## 38. W2 step 10's acquire lease: the image, its semaphore and the quarantine
+
+`native::vulkan::acquire` (the pure half) and `Swapchain::acquire` with `AcquireLease`
+(the owning half) land step 10's next piece. Present, reconfigure and the recovery of
+a poisoned surface remain owed.
+
+### 38.1 The lease is a borrow, so exclusivity is not a run-time flag
+
+`Vulkan` permits at most one acquired image that has not yet been presented or
+discarded, and `swapchain`'s new doc calls that the lease rule. It is enforced by the
+type rather than by a flag: `Swapchain::acquire(&mut self, _)` returns an
+`AcquireLease<'s, 'a>` holding `&'s mut Swapchain<'a>`, so a second acquire cannot be
+*compiled* while a lease exists, and `Swapchain::drop` cannot run either. That is the
+same technique `OpenedVulkan` uses for the device/instance pair and `PipelineLayout`
+for its descriptor set layouts: a dependency stated as field order or a borrow rather
+than as a comment. `AlreadyAcquired` is therefore deliberately absent from
+`AcquireError` — there is no run-time state that could disagree.
+
+### 38.2 The pure half names each answer, because a driver cannot be asked for them
+
+`acquire::outcome` lowers `ash`'s `Result<(u32, bool), vk::Result>` into
+`AcquiredImage { index, suboptimal }` or one of five distinct sentences. The
+distinctions are the point, and none of them is reproducible on demand against a real
+driver:
+
+- **`Timeout` is not a failure.** `VK_TIMEOUT` says no image became available within
+  the caller's wait and the surface is fine, so the caller may ask again. Folding it
+  into a driver result would turn a paced frame into a lost surface.
+- **`NotReady` is not `Timeout`.** It is the answer to a zero-timeout poll: the same
+  fact about availability, reached deliberately rather than by a wait running out.
+- **`OutOfDate` is not `SurfaceLost`.** One is fixed by reconfiguring the swapchain,
+  the other by giving up on the window system's surface; a single "surface problem"
+  would erase the difference the caller has to act on.
+- **Everything else keeps the driver's own value** as `Driver(vk::Result)` rather than
+  being folded into a named case this backend has not been taught.
+
+`VK_SUBOPTIMAL_KHR` is a *success* (`ash` maps it to `Ok((index, true))`) and its flag
+is carried rather than dropped: the image is presentable, and the reconfigure decision
+belongs to the step that owns `old_swapchain`.
+
+### 38.3 The unpresented-acquire quarantine is where plan section 4 put it
+
+`AcquireLease::drop` is the preserved semantic. Reaching it means the lease was
+neither presented nor discarded (present is the only path that consumes a lease, and
+it does not exist yet), so the presentation engine may still signal the acquire
+semaphore at a time this backend cannot know: destroying it could free a handle the
+driver still holds, and reusing it could hand the driver a semaphore that is already
+signalled. The drop therefore **poisons the surface** and leaves the semaphore
+undestroyed, which is the borrowed path's behavior stated without its
+`std::mem::forget` bundle.
+
+The flag lives on `Surface`, not on `Swapchain`, for a reason the next piece will
+need: what section 4 quarantines is the *surface*, and reconfigure is about to replace
+the swapchain. A flag on the swapchain would be a second opinion about a fact that
+outlives it. `Surface::is_poisoned` is read by `acquire` **before** anything is
+created, so a quarantined surface is refused without reaching the driver, and
+`Surface::poison` is set by exactly the two paths that cannot prove the semaphore
+reusable: an unpresented drop, and a driver that reports an image index outside its
+own image list (`IndexOutOfRange`, the one contradiction that can arrive on the
+*success* path).
+
+The two paths that *can* prove something destroy the semaphore: a driver refusal means
+the presentation engine never received it and it is still unsignaled, so
+`acquire`'s error branch destroys it and leaves nothing behind. That asymmetry —
+destroy on refusal, retain on unpresented success — is the whole rule, and it is
+stated in the code rather than left to a reader to infer.
+
+### 38.4 What it cost
+
+One clippy iteration, and it is worth recording because the first version read as
+correct: the quarantine was written as `core::mem::forget(semaphore)`, which is
+`-D warnings`'s `forgetting_copy_types` error — a `vk::Semaphore` is a `Copy` handle,
+so forgetting it does *nothing*, and the "retention" would have been an empty
+statement that compiled only if the lint were off. The corrected shape says what
+retention actually is for a handle: **not calling `destroy_semaphore`**. That is also
+why `AcquireLease` holds a plain `vk::Semaphore` rather than an `Option` it would
+`take()` and drop, and why there is no `Drop` body to suppress.
+
+The wait duration is not re-derived: `submission::timeout_nanos` was made
+`pub(crate)` and the acquire wait shares it, so the `u64::MAX` "wait forever" clamp has
+one implementation. `ash`'s 0.38 source was read before the FFI, which is where
+`create_semaphore`'s `VkResult<vk::Semaphore>` shape and the null-fence acquire call
+were settled; the increment then compiled on the first attempt.
+
+### 38.5 Proof
+
+Pure tests cover the successful answer's index and suboptimal flag, the
+timeout/not-ready pair, the out-of-date/surface-lost pair, the pairwise distinctness of
+every named refusal, the driver-result passthrough, and that the two backend-owned
+refusals are not driver results.
+
+Against the real driver: a real `vkAcquireNextImageKHR` on a real swapchain returns an
+in-range index, the leased image is the one that index names, the lease carries a real
+non-null semaphore, the surface is not poisoned while the lease is live, and an
+unpresented drop then poisons the surface and makes the next acquire answer
+`AcquireError::Poisoned` **before** the driver is reached.
+
+The three required gates pass. The increment reaches real hardware, so
+`scripts/conformance.ps1` was run as well and passes.
+
+Step 10 still owes present, reconfigure, and whatever reclamation a poisoned
+surface's retained semaphore can have.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
