@@ -3636,6 +3636,114 @@ traits (`Provides<Graphics>` first), so the frozen oracle can run on this backen
 `scripts/conformance.ps1` becomes its acceptance rather than a check that the hardware
 fixture set is unchanged.
 
+## 52. W2's first family wiring: the device owns its table, and `Provides<Graphics>`
+
+Section 51.3 named W2's own closure as the next piece, `Provides<Graphics>` first.
+That landed as `native::vulkan::family`, and it is the first place the common layer's
+negotiation runs against a real backend rather than only against the mock: the step
+list gained step 13, because section 23.1's rule had moved to W2's work package.
+
+### 52.1 The device owns the table and the pool, because `provide` takes only `&self`
+
+The wiring could not be written before the ownership moved. `Provides::provide(&self)`
+builds the handle, and a `GraphicsApi` verb is stated in `BufferId` / `TextureId`
+terms, so the handle's only route to a driver handle is a table the *device* owns.
+`VulkanDevice` therefore gained two fields, built in `create` where the instance,
+adapter and device are all in hand: the `ResourceTable` the resource steps already had
+(one `GpuAllocator` over which buffers, textures, views and samplers live) and the one
+`CommandPool` on the selected queue family.
+
+That made teardown order load bearing for the first time. A type with a manual `Drop`
+runs that body **before** its fields are dropped, so the previous
+`impl Drop for VulkanDevice { destroy_device }` would have destroyed the device before
+the table and pool that have to be released first. The fix is a field rather than a
+rule: the raw `ash::Device` moved into a private `OwnedDevice` newtype whose own `Drop`
+destroys it, and the declaration order -- `table`, `pool`, `device` -- is the release
+order. `ash::Device`'s `Clone` is a handle and a function table, never a second
+ownership claim, so the clones the table, the pool, every encoder and every framebuffer
+hold stay valid until that last field runs.
+
+`GpuAllocator` gained `from_handles`: the table is built before the `VulkanDevice`
+value exists, so the constructor that took `&VulkanDevice` could not be used there. The
+two share one body, so the descriptor -- including `buffer_device_address: false`,
+which used to be the only thing keeping the allocator off a feature this device never
+enables -- is still written once. `DeviceError` gained two sentences, `Allocator` and
+`CommandPool(RecordError)`; the first deliberately drops `gpu_allocator`'s inner
+`AllocationError`, which is neither `Copy` nor `PartialEq`, exactly as
+`ResourceError::Memory` already flattens it at the allocation boundary. Both are now
+reachable *after* `vkCreateDevice`, so each early return destroys the device it was
+handed -- and the pool failure drops the table first, because an early return does not
+get field order.
+
+### 52.2 The handle is the recording context, and the recording begins lazily
+
+`family::GraphicsRecording<'d>` borrows the device and owns one recording and every
+pass target that recording names. Two decisions were forced rather than chosen:
+
+- **The recording begins on the first command that needs one**, not in `provide` and
+  not in `begin_raster` alone. `provide` cannot report a failure and allocating a
+  command buffer can fail; and the graph records its transitions *before* it opens the
+  pass, so a recording begun only by `begin_raster` would refuse the transition that
+  makes the pass valid. This was found by the real-driver test, whose first attempt
+  failed with `Recording(NotRecording)` on the transition rather than by review.
+- **A finished handle refuses.** The state is a three-variant private `Stage`
+  (`Fresh` / `Recording(Box<Encoder>)` / `Finished`) rather than an `Option`, because
+  an `Option` alone would let a handle whose recording was already handed to submission
+  silently allocate a second one nobody would submit. Clippy's `large_enum_variant`
+  is what boxed the encoder: it carries a loaded device function table and is some
+  1.5 KiB, and one allocation per recording is nothing beside the driver calls it
+  enables.
+
+`begin_raster` runs the preserved attachment rule first -- one colour at index zero, no
+depth-stencil -- and only then resolves the attachment's texture, so a pass with no
+pipeline that could run in it is refused for that reason rather than for whatever its
+first attachment happened to name. The `VkRenderPass` and `VkFramebuffer` then come
+from the existing `framebuffer::create`, and the created target is kept in the handle
+rather than dropped at `end_raster`, because the recorded `vkCmdBeginRenderPass` names
+it until the commands referencing it complete.
+
+Every id is resolved through the device's table, whose key is the whole stamped
+`ResourceId`. A foreign or replaced generation therefore has no record, so it is
+refused as `UnknownTexture` / `UnknownBuffer` before the driver without the handle
+checking for it separately -- the same guarantee
+`common::api::handle::verify_texture` states, reached through the map key.
+
+### 52.3 Transitions and submission are deliberately not family vocabulary
+
+A pipeline barrier is a backend mechanism and the common contract carries none (plan
+section 1), and the contract has no submission verb yet. So
+`GraphicsRecording::transition_buffer` / `transition_texture` and
+`GraphicsRecording::finish` are crate-private methods rather than `GraphicsApi` verbs,
+and the module says so where they are declared. `finish` takes `&mut self` rather than
+`self` for a reason the ownership rule dictates: the pass targets stay in the handle,
+so the caller must keep it alive until the submission that names them reports terminal.
+
+### 52.4 Proof
+
+Against the real driver: `require::<_, Graphics>(&device)` yields the handle and it
+reports the device's own stamp; the handle records the graph's transition, the pass
+bracket, the pipeline, the viewport and scissor, a real vertex and index buffer and
+both draws; and the submission reports `Complete`, with the handle still alive so the
+framebuffer outlives the work that names it. The second fixture asserts the refusals:
+a depth-stencil attachment as `Pass(DepthStencil)`, a foreign texture id as
+`UnknownTexture`, a foreign buffer id as `UnknownBuffer`, a zero-height viewport as the
+lowering's own `Draw` sentence, and the same `NoPass` the encoder gives for a raster
+verb with no pass open -- with the recording still usable and still endable afterwards,
+and a finished handle answering `NotRecording` rather than beginning a second
+recording.
+
+The increment compiled with no iteration; `rustfmt` reflowed three lines and clippy's
+one `large_enum_variant` was the only correction. The `ash` 0.38 source had already
+settled the `Clone`-without-`Drop` shape of `ash::Device` in earlier increments, and
+that is what made the field-order teardown safe to write rather than guess.
+
+The three required gates pass, and because the increment creates and submits real GPU
+work `scripts/conformance.ps1` was run as well and passes.
+
+Still owed by W2's closure: the remaining families on this backend (`CopyApi` next,
+since every verb it needs is already recorded), and then the execution-layer migration
+that lets the frozen oracle run on this backend.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
