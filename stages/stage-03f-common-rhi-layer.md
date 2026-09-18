@@ -1880,6 +1880,100 @@ close gate and is not re-run for a mid-step increment.
 
 Step 9 is complete. Step 10 (surface) is next.
 
+## 34. W2 step 10's pure half: the fixed presentation contract
+
+Step 10 is the surface path. Its first bounded piece landed as
+`native::vulkan::surface`, the pure half: the fixed presentation contract decided
+against what one surface reports, and the `VkSwapchainCreateInfoKHR` that decision
+lowers into. It creates nothing and owns nothing, so every refusal is provable
+without a window — which is the same reason step 1's validation probe and step 7's
+barrier lowering were split this way. The surface handle, the swapchain, the acquire
+lease, present, reconfigure and the unpresented-acquire quarantine remain owed.
+
+### 34.1 The contract is fixed, and it refuses rather than negotiating
+
+`R8G8B8A8_UNORM` with `SRGB_NONLINEAR`, `FIFO` presentation, `OPAQUE` compositing:
+the same fixed triple the borrowed path being replaced configures. It is deliberately
+**not** a preference order over the driver's lists. Choosing the closest available
+format or mode would present something the graph did not compile against, and the
+graph's compile-time format decision is what makes the surface texture's descriptor
+correct. Each missing piece is a distinct sentence, because they need different
+fixes: no such format at all, the format with another colour space, and the request
+itself not being a size.
+
+Two refusals carry a preserved semantic from plan section 4:
+
+- **sRGB is not claimed.** `R8G8B8A8_SRGB` is a first-class portable format and does
+  *not* satisfy this contract. The drawable's own encoding is not observable through
+  this API, so accepting the sRGB format would apply a second gamma to bytes the
+  compositor already decodes. A surface offering only the sRGB format is refused by
+  name.
+- **The extent is never invented.** A non-zero `current_extent` **is** the size the
+  surface must be configured at, and the caller's requested size is not a competing
+  input; only a zero `current_extent` — the specification's "you choose" — lets the
+  request be used, clamped into `[min_image_extent, max_image_extent]`.
+
+### 34.2 The numbers that are policy, not derivation
+
+`IMAGE_COUNT` is 3, one more than the borrowed path's maximum frame latency of two:
+the smallest count under which a presented frame and a frame still being recorded are
+both in flight. It is clamped into the driver's own `[min_image_count,
+max_image_count]`, and the lower bound is applied **first** — clamping in the other
+order could return a count below `min_image_count` for a range the specification
+forbids but a value can still express. `REQUIRED_USAGE` is `COLOR_ATTACHMENT`, which
+is also the borrowed path's `TextureUses::COLOR_TARGET`; the caller's portable usage
+is folded on top through `texture::usage_flags`, so a swapchain image is never less
+capable than the graph declared and never more.
+
+### 34.3 What the lowering deliberately leaves to its caller
+
+`pre_transform`. A swapchain's `pre_transform` must name a transform the surface
+reports as supported, and requiring it is a claim this increment does not need yet;
+the swapchain-owning step owns that field. Everything else in the create-info is
+written, including the fields whose defaults would silently claim something:
+`image_array_layers` is one, `clipped` is true, and `old_swapchain` is null (a
+reconfigure passes its own predecessor through the field). `image_sharing_mode` is
+`EXCLUSIVE` for the same reason `buffer::create_info` states it: this backend has one
+queue, and `CONCURRENT` would claim a cross-queue contract the execution model cannot
+honour.
+
+Not here either: the presentation-support query
+(`vkGetPhysicalDeviceSurfaceSupportKHR`), which is device enumeration and therefore
+step 2's rule's business; and the surface handle itself, which needs the instance to
+enable `VK_KHR_win32_surface` first.
+
+### 34.4 Proof
+
+Thirteen pure tests cover the contract's constants by name (a change to any of them
+changes what every surface presents), the present format pinned against
+`format::image_format(TextureFormat::Rgba8Unorm)` **and** pinned as *not* the sRGB
+format, the driver's `current_extent` winning over the request, the zero request and
+the out-of-range request as their own refusals, a zero `max_image_count` meaning no
+ceiling, the image count raised to the driver's floor and held under its ceiling,
+each of the six missing pieces of the contract as its own sentence, the usage fold
+reaching every one of the eight declared `TextureUsageKind` variants, and the
+create-info's field-for-field contents.
+
+Two compile iterations, both trivial and both worth the record: `SurfaceKHR` is a
+non-dispatchable handle whose constructor `from_raw` comes from the `Handle` trait
+rather than an inherent method, and the test-only usage list had to live inside the
+test module so the library build does not import a name it never uses.
+
+One of the increment's own tests was wrong rather than the code, in the same family
+the previous increments recorded: the usage-fold test asked the *minimal* conformant
+surface for every declared kind and was refused, because the minimal surface's
+`supported_usage_flags` does not include `STORAGE`. That refusal is the code being
+right; the test now asks a deliberately permissive surface and asserts the lowered
+mask equals `texture::usage_flags(usage) | REQUIRED_USAGE`, which is what makes a
+kind the vocabulary cannot lower a failure rather than a silently narrower swapchain.
+
+The three required gates pass; `scripts/conformance.ps1` is the W2 close gate and is
+not re-run for a mid-step increment.
+
+Still owed by step 10: enabling the surface instance extensions, the `VkSurfaceKHR`
+handle and its Win32 creation, the swapchain and its images, the acquire lease,
+present, reconfigure, and the unpresented-acquire quarantine.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
