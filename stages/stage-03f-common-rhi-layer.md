@@ -3948,6 +3948,111 @@ storage-role families (`StorageBuffer`, `StorageTexture`) next, since `ComputeAp
 bindings are what they build, and their transitions arrive with them -- and then the
 execution-layer migration that lets the frozen oracle run on this backend.
 
+## 55. W2 step 13's storage-buffer family: the first resource role, and the compute transitions
+
+The first of the two storage-role families landed: `native::vulkan::storage` is the
+pure half, `family::StorageBufferBindings` with `Provides<StorageBuffer>` is the
+owning half, and `Provides<Compute>`'s handle gained the transitions section 54.4 said
+would arrive with these families. `StorageTexture`, the indirect-dispatch family and
+the execution-layer migration remain owed by step 13.
+
+### 55.1 A resource role records nothing, so its handle owns no recording
+
+`StorageBuffer` is the first family whose handle is not a recording context. A
+resource role gates how a binding is built rather than which commands exist, so
+`StorageBufferBindings` has no `Stage` machine, no `Encoder` and no `finish`: it
+borrows the device and resolves a `BufferId` through the table. That is the one place
+the four wired families differ *structurally* rather than only in their verbs, and it
+is stated by the type's fields rather than by a comment.
+
+It is still a distinct type from `GraphicsRecording`, `CopyRecording` and
+`ComputeRecording` for the reason those three are distinct from each other: a family
+verb does not re-ask the ledger once a handle exists, so only the type keeps one
+family's vocabulary out of another's call site.
+
+### 55.2 The range rule has one implementation, and the bind-group step now calls it
+
+`storage::check_range` refuses a zero range by name and computes the end with
+`checked_add`, so `offset = u64::MAX` is an overrun rather than a wrapped range that
+satisfies `end <= buffer_size`. That is the same rule `bind_group::buffer_info` already
+enforced at the driver boundary, so this increment did **not** write a second spelling
+of it: `buffer_info` now calls `check_range` and maps its two sentences onto the two
+`BindGroupError` variants it already had. The behavior is unchanged -- `bind_group`'s
+own tests still pin it -- and the arithmetic exists once.
+
+### 55.3 The usage check is the buffer step's rule applied at a new boundary
+
+`create_storage_binding` reads two facts from the device's table: the buffer's created
+size and **the usage it was declared with**. `BufferRecord` gained the second, because
+a binding built after creation must be checked against what the graph declared rather
+than against what the driver happens to allow -- step 4's "the mapping does not widen"
+rule (`buffer.rs`) is what makes the check meaningful, and a storage binding over a
+buffer created for vertices is an operation no retained access declared. The buffer's
+declared usage and its created size are the same values the graph's own checks saw, so
+a binding cannot be admitted against a weaker fact than the one that admitted the
+buffer.
+
+The check is "at least one storage direction", not "both": the *layout* decides
+whether a binding is read-only or read-write, and the family verb does not see the
+layout, so claiming the stronger fact here would be inventing one.
+
+### 55.4 The binding is a value, and the binding number is not the family's to guess
+
+`StorageBufferApi::create_storage_binding` returns `StorageBufferBinding`, which
+carries base resource identity and the two numbers -- never a driver handle -- and
+`StorageBufferBinding::at(binding)` is how it reaches a `BindGroupEntry`. The trait
+signature has no binding number, and inventing one would be a second answer about which
+numbers a layout declares; the layout's own `entry(binding)` stays the only one.
+
+### 55.5 The compute transitions arrived, and they are the graph's own barrier
+
+Section 54.4 recorded why `ComputeRecording` had none: the bindings a compute recipe
+reads are the storage-role families. They are here now, as crate-private
+`transition_buffer` / `transition_texture` on the compute handle -- in the recording
+the dispatch is in, rather than on the storage handle, whose own command buffer would
+have made the barrier a cross-handle composition decision that belongs to the
+execution-layer migration. Both resolve their ids through the table and map a stale id
+to `ComputeError::UnknownBuffer` / `UnknownTexture`, and the image one reads the mapped
+format from the texture's own description so the depth fact keeps step 4's single source
+of truth.
+
+### 55.6 What it cost
+
+One compile iteration, and it is the recorded lesson about a device method reached
+through a trait: `VulkanDevice::ledger` is a `CapabilitySource` method, so the test's
+capability gate needed the trait in scope -- the compiler named it, and nothing else
+moved. No FFI was written at all: the two `ash` facts this increment would have needed
+(`DescriptorBufferInfo`'s derives, and `cmd_dispatch`'s counts) were already read by
+the bind-group and compute increments, so section 23.4's rule was satisfied by reuse.
+
+### 55.7 Proof
+
+Pure: `storage`'s seven tests cover the accepted ranges (including one ending exactly
+at the buffer's own end), the zero range by name, a range past the buffer, both
+wrapping shapes (`u64::MAX - 3` with a size over the end, and `u64::MAX` as the
+offset), the binding's three facts, and that `at` reaches a `BindGroupEntry` carrying
+base identity at whatever number it is given -- with two bindings differing when any of
+their three facts do.
+
+Against the real driver: `require::<_, StorageBuffer>(&device)` yields the handle on a
+device whose ledger proves the row, it reports the device's own stamp, a real
+device-local storage buffer's range is accepted and reaches a real
+`BindingResource::Buffer`, and the four refusals are asserted by name -- a zero range,
+a range past the buffer, a vertex buffer as `UsageNotDeclared`, and a stale id as
+`UnknownBuffer`. A second fixture negotiates `Compute`, transitions that real buffer
+into `ShaderStorageReadWrite`, records the bracket, a real `VkComputePipeline` and a
+real `vkCmdDispatch`, and submits to `Complete` -- so the transition and the dispatch
+are work the driver executes. A third shows both stale-id transition refusals as values
+that leave the recording usable and still endable.
+
+The increment compiled with one iteration. The three required gates pass. Because it
+creates and submits real GPU work, `scripts/conformance.ps1` was run as well and
+passes.
+
+Still owed by step 13: the `StorageTexture` role (which needs the device's format table
+for its per-format storage fact), the indirect-dispatch family, and then the
+execution-layer migration that lets the frozen oracle run on this backend.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
