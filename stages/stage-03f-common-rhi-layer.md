@@ -1412,7 +1412,100 @@ This increment compiled without an iteration, and the `immutable_samplers` trap 
 28.3 was caught by reading the `ash` 0.38 source before writing the lowering, which
 is the rule section 23.4 already records.
 
-Still owed by step 5: the raster pipeline.
+Still owed by step 5: the raster pipeline — landed in section 29.
+
+## 29. W2 step 5 complete: the raster pipeline
+
+`common::pipeline` landed the fixed-function vocabulary W1 owed — primitive
+topology, cull mode, front face, depth-stencil state, colour target and write mask,
+sample count — and `native::vulkan::pipeline::create_raster` lowers it into a real
+`VkGraphicsPipeline`. Step 5 is complete; step 6 (Naga `spv-out`) is next.
+
+### 29.1 The one refusal the vocabulary owns
+
+A raster pass admits exactly one colour attachment at index 0 (plan section 4), so
+`PipelineState::validate` refuses a second colour target before any backend sees the
+description, and also refuses a description with no attachment at all and a zero
+sample count. What it deliberately does **not** decide is whether a name is a colour
+or a depth format: `TextureFormat` is `#[non_exhaustive]`, so a classification
+written in `common` would need a wildcard arm that invents an answer for a format
+the layer has not been taught. The backend's format table answers it, and
+`signature` refuses the two mismatches by name — a colour target that carries depth,
+and a depth-stencil state that carries none.
+
+`DepthStencilState::depth_compare` is `common::sampler::CompareFunction` rather than
+a second eight-variant enum: the eight orderings are one vocabulary, and the sampler
+module already owned them.
+
+### 29.2 Three states the lowering pins
+
+- **Viewport and scissor are dynamic.** `GraphicsApi::set_viewport` and
+  `set_scissor` are the verbs that write them, so a pipeline that baked them in
+  would silently ignore those verbs. The viewport state declares one viewport and
+  one scissor with null pointers, which is the legal dynamic shape.
+- **The depth-stencil state is present exactly when the description names a
+  depth-stencil attachment**, because `Vulkan` validates a pipeline against the
+  subpass it is created for: without the state it is invalid against a render pass
+  that has a depth attachment, and with it, against one that does not.
+- **Every field the portable description does not state is pinned to the value that
+  claims nothing.** This is the raster increment's version of the sampler's
+  null-comparison rule: `PipelineColorBlendAttachmentState::default()` writes **no**
+  colour components, so a lowering that forgot the write mask would produce a
+  pipeline that renders nothing and still creates successfully. The write-mask fold
+  is asserted directly, and the rest (blend disabled with the replace identity, no
+  logic op, no sample shading, the default sample mask, no depth bias, no stencil,
+  fill polygon mode, a line width of one) is written rather than defaulted.
+
+### 29.3 The render pass, and why it is not owned
+
+`Vulkan` 1.0 has no dynamic-rendering path, so `vkCreateGraphicsPipelines` needs a
+render pass. `create_raster` creates one from the pipeline's attachment signature and
+destroys it as soon as the pipeline exists, rather than storing it in
+`RasterPipeline`: a pipeline does not refer to a render pass after creation
+(`vkDestroyRenderPass` requires only that submitted commands referring to it have
+completed), and the render passes the recording step begins are *compatible* with
+the pipeline when their attachment formats, sample counts and reference layouts
+agree — which is exactly what `signature` states and what the recording step will
+create from. The creation render pass's load and store operations are `DONT_CARE`,
+because contents operations belong to the compiled pass (RenderGraph's
+`AttachmentOps`), not to a pipeline, and they do not participate in render pass
+compatibility.
+
+### 29.4 Proof, and what it cost
+
+Against the real driver: a colour-only `VkGraphicsPipeline` over an empty pipeline
+layout, a depth-attached one over a pipeline layout that owns a real descriptor set
+layout, and a non-SPIR-V payload refused while the modules are being described —
+before the render pass exists — with the consumed layout released. The pure tests
+cover the five topologies, three cull modes, two windings, three vertex formats, two
+step modes, the write-mask fold, the named sample counts and their refusals, the
+attachment signature, and the two format mismatches. `common::pipeline` covers the
+retained colour-only and depth-sibling descriptions, the second-colour-target
+refusal, the no-attachment refusal, the zero-sample refusal and the write-mask fold.
+
+The two modules the raster tests build from are Naga-emitted SPIR-V for a minimal
+position-in/colour-out recipe, standing in for step 6 exactly as
+`MINIMAL_COMPUTE_SPIRV` does for the compute half; they were produced once with
+Naga's `spv-out`, targeting SPIR-V 1.0, and embedded, so this repository needs no
+SPIR-V assembler.
+
+The increment compiled with no iteration. Two of its own *pure assertions* were
+wrong rather than the code, and both are worth recording because each is a trap that
+reads as a true statement:
+
+- `CullModeFlags::contains(NONE)` is **always** true, so "pairwise non-containment"
+  is not a distinctness test when one of the values is the empty set; the empty mode
+  has to be asserted `is_empty()` and compared for inequality instead.
+- `SampleCountFlags`'s named counts happen to equal their bit (`TYPE_4` is `4`), so
+  "the flag bit is not the count" is false for every legal value. What the match
+  actually buys is the refusal of the *illegal* ones — `SampleCountFlags::from_raw(3)`
+  is a value `Vulkan` does not define — which is the only place a cast would have
+  differed.
+
+Both were caught by running the tests, not by review.
+
+The three required gates pass; `scripts/conformance.ps1` is the W2 close gate and is
+not re-run for a mid-step increment.
 
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
