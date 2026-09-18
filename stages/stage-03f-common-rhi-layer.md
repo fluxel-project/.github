@@ -2049,6 +2049,66 @@ Still owed by step 10: the surface-facts query and the presentation-support quer
 the swapchain and its images, the acquire lease, present, reconfigure, and the
 unpresented-acquire quarantine.
 
+## 36. W2 step 10's query half: the surface facts and the presentation-support answer
+
+Step 10's surface path now reads the facts a swapchain decision needs instead of
+waiting for the swapchain itself. `presentation::Surface::facts` reads the three
+lists `surface::contract` already decides against --
+`vkGetPhysicalDeviceSurfaceCapabilitiesKHR`, `...FormatsKHR` and
+`...PresentModesKHR` -- and `presentation::Surface::supports_presentation` answers
+the fourth question: whether **one queue family** can present to the surface.
+
+### 36.1 The query does not decide, and the decision does not read the driver
+
+The split is the one step 1 and step 7 already use: the pure half owns the rule, the
+owning half owns the call. `surface::contract` is still the only place the fixed
+presentation contract is decided, and it is still pure; `facts` produces its three
+inputs and nothing else. `SurfaceFacts` carries owned vectors because `Vulkan`'s
+format and present-mode enumeration is a two-call read whose count can change between
+the calls, and `ash`'s `read_into_uninitialized_vector` retries on `VK_INCOMPLETE`
+rather than truncating -- which is why the idiom is not re-implemented here.
+
+A device that does not support the surface answers with empty lists rather than a
+driver error, and that is reported as it arrived: `contract` is what turns an empty
+format list into `FormatUnsupported`. `SurfaceQueryError` has one variant per call,
+because the first three are one surface's own facts and the fourth is whether a
+different object -- a queue family -- can present to it.
+
+### 36.2 The presentation-support answer is the fact step 2's rule has to be told
+
+`supports_presentation(physical_device, queue_family)` is a value about one surface,
+not a capability row about the device: the same backend on another window can answer
+differently. Step 2 chose the queue family by rule and without a surface, so this is
+the first place that selection can be checked against presentation at all.
+
+On the named board the rule holds: the selected graphics family is family 0 of five,
+it reports presentation support, and two of the five families do. That is recorded
+rather than assumed. What the query buys is that the swapchain-owning step can refuse
+**before** a swapchain exists on a board where the rule does not hold, instead of
+discovering it at `vkCreateSwapchainKHR`. Acting on the answer -- creating the device
+on a family that can present when the rule's first graphics family cannot -- remains
+the swapchain step's decision and is deliberately not here, because it changes step
+2's contract and is only needed once there is a swapchain to create.
+
+### 36.3 Proof
+
+Against the real driver: a real surface created from a real hidden window reports
+non-empty format and present-mode lists, `surface::contract` accepts them with the
+contract's own format, colour space and present mode, every reported queue family
+answers `supports_presentation`, and at least one answers `true`. The test does not
+pass vacuously: once the surface exists and adapters were enumerated it **requires**
+an adapter attached to that surface rather than skipping, so the assertions above are
+reached on this machine and not bypassed by an early return.
+
+The increment compiled with no iteration; the `ash` 0.38 source was read before the
+FFI, which is where the three query signatures, their `VkResult` returns and the
+retrying two-call helper were settled. The three required gates pass;
+`scripts/conformance.ps1` is the W2 close gate and is not re-run for a mid-step
+increment.
+
+Still owed by step 10: the swapchain and its images, the acquire lease, present,
+reconfigure, and the unpresented-acquire quarantine.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
