@@ -1271,6 +1271,63 @@ unique line, and reading the result, remains the rule.
 
 Step 4 is complete. Step 5 (descriptors and pipelines) is next.
 
+## 27. W2 step 5's shader and compute-pipeline half
+
+Step 5 is descriptors and pipelines. Its first bounded piece landed -- the SPIR-V
+module, the pipeline layout, and the compute pipeline built over it -- and the
+working tree it was written in was found uncommitted, so this increment is the
+verification, recording and landing of that piece rather than a further slice.
+Descriptor set layouts and the raster pipeline remain owed by step 5.
+
+`native::vulkan::shader` owns a `VkShaderModule` and states two facts in the type
+rather than re-checking them: `&[u32]` is already a non-zero-multiple-of-four byte
+size at a four-byte-aligned address, which is everything
+`VkShaderModuleCreateInfo` requires of `codeSize` and `pCode`. What is left is the
+payload itself, and both refusals are values returned before the driver is
+reached: an empty slice, and a first word that is not the SPIR-V magic number --
+carried as `NotSpirV { found }` rather than a boolean, because a different
+container and a truncated payload produce different first words and the diagnostic
+should say which arrived. Nothing here decodes the instruction stream: that
+belongs to step 6, and a second partial parser would be a second truth about the
+same bytes.
+
+The module is deliberately **transient**. `Vulkan` copies the words at creation
+and reads the module only when a pipeline is created, so `Module` owns the handle
+and the device, never the SPIR-V, and destroys the handle in `Drop`.
+`pipeline::create_compute` creates one inside its own body, records the stage, and
+lets that drop run on the way out of the call -- after `vkCreateComputePipelines`
+has returned and not before. The stage mapping is exhaustive over this crate's
+closed `ShaderStage` and has no wildcard, which is the opposite shape from a
+mapping over a `#[non_exhaustive]` portable enum: a stage added later must be
+taught to the match rather than silently lowered to no stage flag.
+
+`native::vulkan::pipeline` owns the layout *inside* the pipeline. A `VkPipeline`
+refers to its `VkPipelineLayout` at bind time, so the only shape that cannot be
+misused is the longer-lived object containing the shorter one; field order then
+destroys the pipeline before the layout, and the layout before its device. The
+set-layout slice is already a parameter, so the descriptor increment fills it
+rather than changing this call, and an empty slice is the honest description of a
+shader that declares no bindings. Push constant ranges stay empty because the
+borrowed path being replaced passes an immediate-data size of zero, which is "no
+push constants" here.
+
+One `ash` 0.38 fact worth recording, read from the source rather than its
+documentation: `create_compute_pipelines` returns `Result<Vec<vk::Pipeline>,
+(Vec<vk::Pipeline>, vk::Result)>`, and the specification leaves the output array
+**undefined** on failure. The partially filled vector that path returns is
+therefore dropped without being read -- destroying a handle the driver did not
+promise to have created would be worse than not destroying it.
+
+Proven on this machine, not only in unit tests: a real `VkShaderModule` and a real
+`VkComputePipeline` over a real empty layout are created and destroyed through the
+entry point, and a payload that is not SPIR-V is refused before the driver is
+reached, with the consumed layout released rather than leaked. The three required
+gates pass; `scripts/conformance.ps1` is the W2 close gate and is not re-run for a
+mid-step increment.
+
+Still owed by step 5: descriptor set layouts (bind group layouts) and the raster
+pipeline.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
