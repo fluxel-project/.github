@@ -3744,6 +3744,115 @@ Still owed by W2's closure: the remaining families on this backend (`CopyApi` ne
 since every verb it needs is already recorded), and then the execution-layer migration
 that lets the frozen oracle run on this backend.
 
+## 53. W2's second family wiring: `CopyApi`, and the type is the permission check
+
+Section 52 named `CopyApi` as the next piece of W2's closure "since every verb it needs
+is already recorded". It landed as `CopyRecording` and `Provides<Copy>` in
+`native::vulkan::family`, so step 13 -- the family-wiring step -- now covers two
+families, and it is the first place the plan's one-handle-type-per-family rule has a
+second instance to prove itself against.
+
+### 53.1 Two handle types, because the handle type is what bounds a call site
+
+`GraphicsRecording` and `CopyRecording` are distinct types, and that is a correctness
+decision rather than a naming preference. A family verb does not re-ask the ledger once
+a handle exists -- that is the whole point of negotiating once (plan section 11.2) --
+so a single type implementing both `GraphicsApi` and `CopyApi` would let a caller that
+negotiated only `Copy` reach a draw, without any row having been proved for it. Keeping
+the traits on separate types makes "a copy handle cannot draw" a fact of the type
+system rather than a run-time check, which is exactly the shape section 9.5's two
+refusals describe: the backend *has* the graphics vocabulary, so the refusal is that
+this handle cannot name it, and no call site can be written.
+
+Both handles share one `Recording` owner, which is where the lazily begun `Encoder` and
+the `Fresh` / `Recording` / `Finished` states live. How a handle reports the recording
+is the only part the families differ in: `GraphicsRecording` maps it through
+`GraphicsError::Recording`, `CopyRecording` through `CopyError::Recording`, so each
+family keeps its own sentence for a command the recorder refuses.
+
+### 53.2 The extraction is real duplication avoided, one increment after it appeared
+
+Section 52's `GraphicsRecording` held the `Stage` machine directly. The second family
+would have needed a copy of it, so the machine moved into the private `Recording` type
+both handles now own. That is plan section 3's rule applied one level down: the
+extraction happened when two concrete consumers existed, not when the second was
+imagined. The alternative -- a near-identical `Stage` plus a near-identical lazy-begin
+under a second name -- would have been the "second spelling of one shape" the plan keeps
+refusing, and W4 would have had to reconcile it.
+
+One small API change came with it: `Recording::device` returns the handle's `'d`
+rather than a borrow of the recording, so a family verb can resolve its ids through the
+device's table and then take the recording mutably without the two borrows being
+entangled. That is a lifetime statement, not a clone.
+
+### 53.3 Transitions are backend mechanism, and a copy-only recording needs them
+
+`CopyRecording` exposes crate-private `transition_buffer` / `transition_texture`, for
+the reason `GraphicsRecording` already does: a pipeline barrier is a backend mechanism
+and the common contract carries none (plan section 1), so it is the graph's entry point
+rather than a `CopyApi` verb. A copy-only recording needs it *more* than a raster one
+does, because `Encoder::copy_texture` names `TRANSFER_SRC_OPTIMAL` /
+`TRANSFER_DST_OPTIMAL`, so an image that was never transitioned is not in either layout
+the copy command requires.
+
+Both transition methods resolve the id and lower the mapped `Vulkan` format through the
+same `format::image_format` the graphics handle uses, and the error is the copy family's
+own `UnknownBuffer` / `UnknownTexture` rather than a nested recorder sentence -- so a
+caller reads one layer's answer, not a wrapper around another's.
+
+### 53.4 The table, not the driver, supplies what a copy is checked against
+
+`copy_buffer` reads both handles *and both declared sizes* from the device's table. The
+sizes are the ones the buffers were created with -- the same values the graph's own
+region check used -- rather than sizes recovered from the driver, so the boundary cannot
+check a region against a fact the graph never saw. `copy_texture` reads both images and
+both `TextureDesc`s the images were made from, because every decision the pure lowering
+makes (the aspect, the mip bounds, the layer rule, the format equality) is derived from
+those descriptions in `native::vulkan::copy`; this call spells none of them.
+
+A stale or foreign id has no record whose key is the whole stamped `ResourceId`, so it
+is refused as `UnknownBuffer` / `UnknownTexture` before the driver -- the same guarantee
+`common::api::handle::verify_texture` states, reached through the map key. A region the
+driver would reject keeps the recorder's own `Region(CopyRegionError)` sentence, because
+"the id names nothing" and "this range is misaligned" are different mistakes to fix.
+
+### 53.5 The recording is still per handle, and composition is not this increment's
+
+Each handle owns its own recording, so a graph execution that names two families
+negotiates two handles and produces two recordings. That is what the contract permits
+and does not require (plan section 21: negotiation and recording context need not remain
+the same object), and it is the honest bounded outcome: `Vulkan` requires one command
+buffer per submit, and composing several families' recordings into one submission is the
+execution-layer migration's decision. Inventing a device-owned shared recorder here
+would be designing that migration's ownership before the migration exists, which plan
+section 3 forbids; the module docs say so where a reader looking for composition will
+find it.
+
+### 53.6 Proof
+
+Against the real driver: `require::<_, Copy>(&device)` yields the handle, it reports the
+device's own stamp, the handle records the graph's own buffer and image transitions and
+then both `vkCmdCopyBuffer` and `vkCmdCopyImage`, and the submission reports `Complete`.
+The second fixture asserts the refusals: a foreign buffer id as `UnknownBuffer`, a
+foreign texture id as `UnknownTexture`, a misaligned region as the recorder's
+`Region(Misaligned)`, and a finished handle answering `NotRecording` rather than
+beginning a second recording -- with the recording still usable and still endable after
+every value refusal, which is what the `ExecutionBackend` contract requires of a
+callback error.
+
+The increment compiled with no iteration and its tests passed first run; no new FFI was
+written, so section 23.4's "read the `ash` source first" rule was satisfied by the step
+8 increment's earlier reading of the two copy signatures rather than by a new one.
+
+The three required gates pass. Because the increment creates and submits real GPU work,
+`scripts/conformance.ps1` was run as well and passes.
+
+Still owed by W2's closure: the remaining families this backend can serve -- `Compute`
+next, whose row is already proved but whose recording verbs (`begin_compute` /
+`end_compute` / `set_compute_pipeline` / `dispatch`) are not yet on the encoder --
+the storage-role and indirect-dispatch families after it, and then the execution-layer
+migration that lets the frozen oracle run on this backend.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
