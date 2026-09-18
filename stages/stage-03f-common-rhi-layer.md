@@ -2109,6 +2109,129 @@ increment.
 Still owed by step 10: the swapchain and its images, the acquire lease, present,
 reconfigure, and the unpresented-acquire quarantine.
 
+## 37. W2 step 10's swapchain half: the `VkSwapchainKHR` and its images
+
+`native::vulkan::swapchain` lands the next bounded piece of step 10: the swapchain
+object itself. It creates the `VkSwapchainKHR` from the fixed contract the pure half
+already decides, reads the images `Vulkan` creates with it, and destroys it in
+`Drop`. The acquire lease, present, reconfigure and the unpresented-acquire
+quarantine remain owed.
+
+### 37.1 The device extension had to be enabled, and the witness is what makes it safe
+
+`device.rs` already recorded that `VK_KHR_swapchain` "belongs to step 10, not here",
+and this is the step. Three pieces landed for it:
+
+- `inventory::enumerate_device_extensions` reads one physical device's own
+  extension names, reusing `inventory::collect_names` so a name that is not
+  NUL-terminated or not UTF-8 still fails the whole enumeration. That rule is not
+  restated: a skipped name could have been `VK_KHR_swapchain`, and the check below
+  would then refuse a device that in fact has it.
+- `device::verify_device_extensions` is the pure half: an exact, case-sensitive
+  comparison against `SWAPCHAIN`, with `MissingDeviceExtension::Swapchain` as its own
+  sentence. Step 1's reason applies unchanged -- a near miss is a different
+  extension, and enabling one the physical device never reported is a creation
+  failure with no diagnosis.
+- `device::open_with_swapchain` reads the inventory, verifies it, and only then
+  calls the same `create` the headless `open` uses, with the one extension enabled.
+
+The witness is the point, not a convenience. `ash` substitutes a panicking stub for
+a function the loader did not resolve, so "create a swapchain on a device opened for
+headless work" must not be expressible: `open_with_swapchain` returns
+`SwapchainDevice`, and `swapchain::create` accepts only that. A headless
+`VulkanDevice` has no path to a swapchain call at all -- the same rule
+`SurfaceInstance` already states for the surface entry points, applied to the device
+half.
+
+### 37.2 The queue family's presentation support is the fact step 2 could not read
+
+Step 2 selected one queue family by rule and without a surface. Whether that family
+can present to *this* surface is a fact about the pair, and `create` is the first
+place it is checked: `supports_presentation` is read through the owned surface, and a
+family that answers no is refused as `QueueCannotPresent { family }` **before**
+`create_swapchain` exists. `Vulkan` would accept the creation and fail only at the
+first present, which is exactly the shape a refusal value is supposed to prevent.
+
+What this increment does **not** do is act on the answer by changing step 2's
+selection rule. That changes the device's contract and is only needed once a present
+call exists; the refusal is the honest bounded outcome until then, and it names the
+family so the decision has a diagnostic.
+
+### 37.3 `pre_transform` stopped being a deferred caller argument
+
+The pure half's own doc said the transform was left to the caller "until the
+swapchain-owning step states which transform it selected". This is that step, and it
+selects the value the borrowed path being replaced configures:
+`crates/wgpu-hal`'s `vulkan/swapchain/native.rs` writes `.pre_transform(IDENTITY)`.
+So the decision moved to where the fixed contract already lives:
+
+- `surface::PRESENT_TRANSFORM` is `IDENTITY`, pinned by a test beside the other
+  contract constants;
+- `surface::supports_transform` asks the driver's own report, and
+  `PresentationError::TransformUnsupported` is a new sentence -- a surface that does
+  not report the contract's transform is refused by name rather than presented at a
+  substitute, which is the same direction the sRGB and extent rules already take;
+- `Presentation` carries `pre_transform`, and `swapchain_create_info` lost its third
+  parameter. A caller can no longer pass a transform the surface did not report.
+
+### 37.4 Ownership, teardown, and what the images are not
+
+`Swapchain` holds the [`Surface`] and the `SwapchainDevice` **by borrow**, so
+"destroy the device or the surface before the swapchain" is a compile error rather
+than a comment. `Vulkan` requires the swapchain to outlive nothing but its own
+children, and the borrow states the two parents.
+
+The images are read with `get_swapchain_images` and kept as handles. They are the one
+resource in this backend that must **not** enter the resource table: the swapchain
+owns them, `Vulkan` destroys them with it, and the table would try to release memory
+that was never allocated for them. The module says so where the field is declared.
+
+Every failure path undoes its own work. A refused image read destroys the swapchain
+it just created, in the same order `create_texture` already uses; and a created
+swapchain that reports no images is `SwapchainError::NoImages` rather than a
+swapchain with nothing to present, because a driver that did that contradicted its
+own contract.
+
+### 37.5 Shared test scaffolding, extracted rather than copied
+
+The real-driver tests need a hidden Win32 window and the "which enumerated adapter is
+this surface on" search, and two modules now need both. They moved to
+`native::vulkan::test_support` (`#[cfg(test)]`), so the Win32 FFI, the window's
+`Drop`, and the window-station skip exist once. `presentation`'s tests import them
+instead of defining them.
+
+### 37.6 What it cost
+
+The increment compiled with no iteration. The `ash` 0.38 source was read before the
+FFI, which settled the three shapes that would otherwise have cost one: the manual
+`khr::swapchain::Device` impl (so `create_swapchain`, `get_swapchain_images` and
+`destroy_swapchain` are the exact calls, with `get_swapchain_images` already
+retrying on `VK_INCOMPLETE` so the two-call idiom is not re-implemented),
+`khr::swapchain::Device::new` taking the instance and the *loaded* device, and
+`SwapchainCreateInfoKHR`'s field set and null-`p_next` default.
+
+### 37.7 Proof
+
+Pure tests cover the extension drift guard (the enabled `CStr` still spells
+`SWAPCHAIN`), the acceptance of a reported extension, both near misses (case and
+suffix) as their own refusal, the transform refusal beside the other five contract
+refusals, the `PRESENT_TRANSFORM` constant, and the create-info's field-for-field
+contents including that the transform now comes from the presentation.
+
+Against the real driver: a real `VkSwapchainKHR` is created over a real surface
+through a real device that verified and enabled `VK_KHR_swapchain`, its real images
+are read (non-empty), and the contract's format is pinned against
+`format::image_format(TextureFormat::Rgba8Unorm)` and its extent asserted non-zero;
+and the device half has its own smoke test that asserts opening succeeds *exactly
+when* the physical device reported the extension, so a creation failure after the
+verification would fail rather than skip.
+
+The three required gates pass. Because this increment reaches real hardware, the
+GPU gate was run as well: `scripts/conformance.ps1` passes.
+
+Step 10 still owes the acquire lease, present, reconfigure, and the
+unpresented-acquire quarantine.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
