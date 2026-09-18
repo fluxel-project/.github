@@ -1328,6 +1328,92 @@ mid-step increment.
 Still owed by step 5: descriptor set layouts (bind group layouts) and the raster
 pipeline.
 
+## 28. W2 step 5's descriptor half: the bind-group layout vocabulary and the set layout
+
+Step 5's remaining pieces were descriptor set layouts and the raster pipeline. The
+descriptor half landed: `common::binding` states the bind-group layout vocabulary,
+and `native::vulkan::descriptor` lowers it, creates the `VkDescriptorSetLayout` and
+owns it. The raster pipeline remains owed.
+
+### 28.1 The vocabulary is the one W1 owed, and it stays closed
+
+`common::binding` is the value vocabulary section 9.1 placed in `common` and W1 had
+not yet written: `ShaderVisibility`, `BufferBindingType`, `TextureSampleType`,
+`SamplerBindingType`, `StorageTextureAccess`, `ViewDimension`, `BindingKind`,
+`BindGroupLayoutEntry` and `BindGroupLayout`. Like `common::vertex` it is a closed
+set — the kinds a retained artifact declares — so a caller cannot describe a binding
+no artifact uses. `ShaderVisibility` is a bitset with a **private** representation
+rather than an enum, because the retained raster recipe's frame uniform is visible
+to two stages at once and visibility composes; only the named constants and `union`
+produce a value, so no stage-less bitset is constructible outside the module that
+tests the refusal.
+
+Two properties are checked where they belong. Duplicate binding numbers and an entry
+no stage can see are properties of the layout itself, so `BindGroupLayout::validate`
+refuses them as values before any backend or driver sees the description. Whether a
+format may be a storage texture, or a filterable float sample is legal for a format,
+is a capability question and stays with the ledger; it is deliberately **not** in
+this type.
+
+### 28.2 Why the layout lowering is two fields, and one of them is not a name change
+
+`VkDescriptorSetLayoutCreateInfo` has nowhere to put a view dimension, a sample
+type, a storage format or a minimum binding size. Only the descriptor type and the
+stage flags reach the driver, and lowering the rest there would be a capability claim
+this call cannot back — a second truth about the same layout. Those facts are bind
+group and pipeline validation, and the steps that need them will read them from the
+entry.
+
+The descriptor type is the one place the lowering is not a plain name change: a
+buffer binding with a dynamic offset gets `UNIFORM_BUFFER_DYNAMIC` /
+`STORAGE_BUFFER_DYNAMIC`, because `Vulkan` spells the dynamic case as a different
+descriptor type. Lowering the flag to the non-dynamic type would produce a layout the
+driver accepts and a bind that later fails. A storage buffer's `read_only` does
+**not** change the descriptor type: it gates the shader's declaration, not the
+layout.
+
+### 28.3 The one `ash` trap this increment had to avoid
+
+Binding arrays are not in the vocabulary, so every entry is one descriptor. `ash`'s
+`DescriptorSetLayoutBinding::immutable_samplers` *derives* `descriptor_count` from
+the slice length, so the natural-looking `.immutable_samplers(&[])` would have
+silently lowered every binding to **zero** descriptors. `descriptor_count` is written
+as one directly and the immutable-sampler pointer is left null; a test asserts both,
+because the wrong version still creates a layout successfully and fails only at bind
+time.
+
+### 28.4 Ownership is the dependency, stated as fields
+
+`Vulkan` requires a descriptor set layout to outlive every pipeline layout that names
+it, and a pipeline layout to outlive every pipeline created against it. `SetLayout`
+owns its handle and destroys it in `Drop`; `PipelineLayout` now owns the
+`Vec<SetLayout>` it was created over rather than borrowing raw handles, so field
+order destroys the pipeline layout before the set layouts and the pipeline before
+both. `create_layout` takes `Vec<SetLayout>` instead of `&[vk::DescriptorSetLayout]`
+for exactly that reason — the earlier "the slice is already a parameter" note
+described the call shape, but not who owns the handles, and a borrow would have left
+the owner to a caller that has nowhere to put it.
+
+### 28.5 Proof
+
+Pure tests cover the five descriptor-type lowerings and their distinctness, the
+dynamic/non-dynamic choice, the storage-direction invariance, the stage-flag fold,
+and the count-one/no-immutable-sampler shape. `common::binding` tests cover the
+retained textured layout, the empty layout, the duplicate refusal and the
+stage-less refusal. Against the real driver: a real `VkDescriptorSetLayout` is
+created from the retained textured-frame layout and destroyed, an empty layout is
+created, a duplicate-binding description is refused before the driver is reached,
+and a real `VkComputePipeline` is built over a pipeline layout that owns a real set
+layout and then dropped — which exercises the whole owner chain. The three required
+gates pass; `scripts/conformance.ps1` is the W2 close gate and is not re-run for a
+mid-step increment.
+
+This increment compiled without an iteration, and the `immutable_samplers` trap in
+28.3 was caught by reading the `ash` 0.38 source before writing the lowering, which
+is the rule section 23.4 already records.
+
+Still owed by step 5: the raster pipeline.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
