@@ -4053,6 +4053,91 @@ Still owed by step 13: the `StorageTexture` role (which needs the device's forma
 for its per-format storage fact), the indirect-dispatch family, and then the
 execution-layer migration that lets the frozen oracle run on this backend.
 
+## 56. W2 step 13's storage-texture family: the per-format fact, and the level the vocabulary cannot name
+
+The second storage role landed: `native::vulkan::storage` gained the texture half
+(`StorageDirection`, `StorageTextureRuleError`, `check_storage_texture`,
+`StorageTextureBinding`), `family::StorageTextureBindings` is the owning half with
+`Provides<StorageTexture>`, and the resource table's `TextureRecord` gained the declared
+`TextureUsage` beside its description. The indirect-dispatch family and the
+execution-layer migration remain owed by step 13.
+
+### 56.1 No new capability fact was needed, and that is step 11's table paying off
+
+`Capability::StorageImage` was already recorded in section 45 from two facts: the
+shader-store pair the device was created with, and the format table proving a format with
+both storage directions. The row is the family's negotiation input, so this increment
+added no ledger fact at all -- what it added is the role's *own* check, at the boundary
+where a binding is built rather than where the device is opened.
+
+The handle reads three facts and none of them from the driver: the texture's description
+and declared usage from the device's resource table, and the `(format, sample count)` row
+from the device's format table. The description supplies the sample count as well, so a
+multisampled row arriving later would be answered by the table rather than by a constant
+here.
+
+### 56.2 Every declared direction must be proved, which is not the buffer role's rule
+
+The storage-buffer family asks only for "at least one storage direction", and section
+55.3 records why: the layout -- which the family verb never sees -- decides whether that
+binding is read-only or read-write, so claiming the stronger fact there would be
+inventing one. A texture's usage names its directions itself, so the stronger question is
+also the honest one: a texture declared for writes and bound through a read-write layout
+must not be admitted on a proof only half of its declared use has. Read is asked first,
+so a row that proves neither names the direction the usage declared first.
+
+The refusals are `storage::StorageTextureRuleError`'s four sentences --
+`UsageNotDeclared`, `FormatUnproved`, `DirectionUnproved { direction, format }` and
+`MultiLevel` -- mapped onto `family::StorageTextureError`'s own names plus
+`UnknownTexture`, because the two roles are separate families and a texture-shaped
+refusal has no buffer-shaped sentence to borrow. `FormatUnproved` and `DirectionUnproved`
+stay distinct for the reason the format table keeps an absent row and a proved negative
+apart: "nothing asked about this pair" and "the driver answered and it was no" are
+different things for a caller to fix.
+
+### 56.3 One level, because the view the table owns spans every one
+
+The common trait says a storage-texture binding is "over one whole texture level". The
+view the resource table creates at texture creation spans every level the description
+declared, so a multi-level description would be bound through a view covering more than
+this vocabulary names. It is therefore refused by name, before the format is even asked.
+A description whose `mip_levels` is zero is admitted, because the image and view lowerings
+already floor it at one -- the refusal follows the lowering rather than disagreeing with
+it.
+
+### 56.4 What it cost
+
+Nothing: the increment compiled with no iteration and its tests passed first run. It wrote
+no FFI at all -- the only driver-adjacent change is the table accessor -- so section
+23.4's "read the `ash` source first" rule was satisfied by the earlier copy,
+format-fact and view increments rather than by a new reading. One design question did need
+answering from existing code rather than from the specification, and 56.3 records the
+answer the resource table already implied.
+
+### 56.5 Proof
+
+Pure: `storage`'s new tests cover every declared direction admitted when its own direction
+is proved (including the one-direction rows admitted for one-direction usage), a sampled
+texture refused by name, an absent row refused as unproved rather than unsupported, an
+examined row that misses a declared direction naming it (read first when neither is
+proved), a two-level description refused with its count carried and a zero-level one
+admitted, and the binding value's identity and its reach into a bind group at any number.
+The resource table's texture test now also asserts the declared usage is read back and is
+gone after destruction.
+
+Against the real driver: `require::<_, StorageTexture>(&device)` yields the handle on a
+device whose format table proved a storage format, the handle reports the device's own
+stamp, and a real device-local storage texture's binding reaches a real
+`BindingResource::Texture` at the number the layout declares. The refusals are asserted by
+name -- a sampled texture as `UsageNotDeclared`, a two-mip storage texture as
+`MultiLevel { levels: 2 }`, and a stale generation as `UnknownTexture`.
+
+The three required gates pass. Because the increment creates real GPU resources,
+`scripts/conformance.ps1` was run as well and passes (89 cases, one adapter).
+
+Still owed by step 13: the indirect-dispatch family, and then the execution-layer
+migration that lets the frozen oracle run on this backend.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
