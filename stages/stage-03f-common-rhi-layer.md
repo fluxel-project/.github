@@ -2628,6 +2628,119 @@ object, so what it proves here is that the hardware fixture set is unchanged.
 Still owed by step 11: the remaining ledger rows, and the lowering that hands these
 facts to `fluxel_rendergraph::DeviceCapabilities`.
 
+## 42. W2 step 11's lowering half: the discovery facts onto `DeviceCapabilities`
+
+Step 11's other half landed as `native::vulkan::capability`: one pure function that
+lowers the three discovery results this backend already owns -- the
+`CapabilityLedger` `require` negotiates from, the adapter's `AdapterLimits`, and
+`format_facts`'s per-format evidence table -- onto
+`fluxel_rendergraph::DeviceCapabilities`. It creates nothing, asks the driver
+nothing, and cannot fail, which is the same split step 1's probe and step 7's
+barrier lowering use: the rule is pure, the call that feeds it is separate.
+
+### 42.1 The ledger is the optional-domain input, not a second copy of the facts
+
+The compute, storage-buffer and indirect rows are read from the ledger rather than
+re-derived from the queue family and the limits. That is what keeps one discovery
+answer: a row this backend has not recorded is a domain nothing has proved, so the
+lowering reports the rejecting value automatically -- and starts reporting the fact
+the moment the step that proves the row records it. It is also why this increment
+does not need to add ledger rows: the lowering is total over whatever the ledger
+holds, and the remaining rows are the separate, independently provable piece step 11
+still owes.
+
+### 42.2 Four fields are decisions rather than copies
+
+- **Recording is `DeferredCommandBuffers`.** This backend records into a
+  `VkCommandBuffer` (step 7) and submits it (step 9). The GL family's
+  `ImmediateContext` is the other model, and the two are not interchangeable.
+  `parallel_independent_encoders` is false because the one recording encoder is
+  sequential.
+- **Transitions are `GraphManagedExplicit`.** `barrier` lowers the graph's semantic
+  access states onto `vkCmdPipelineBarrier`, so a graph transition *is* a backend
+  operation here. The GL family keeps them `BackendManaged` because its `compat`
+  layer mirrors state instead. This is the first place the two idioms are visibly
+  different in the lowered value, rather than only in the implementation.
+- **Copy is a queue fact and it is core.** `Vulkan` 1.0 guarantees buffer and image
+  copies on a graphics queue and step 8 records both routes, so no probe had to
+  establish it. The GL lowering states the same fact the same way.
+- **The compute workgroup count is gated on the ledger's compute row.** A driver
+  reports a non-zero count on every device, so copying it unconditionally would name
+  a dispatch dimension for a device whose ledger refused the row. The pure test
+  pins the discriminating pair -- the same non-zero adapter limits, reported only
+  where the row was proved -- exactly as the GL lowering's own test does.
+
+### 42.3 What is deliberately not claimed
+
+- **No surface, and the queue does not present.** Presentation is a fact about one
+  device/surface pair, not about a device: step 10 reads it through a live
+  `VkSurfaceKHR` and the fixed contract. Reporting one here would be a claim about a
+  window this call never saw. The surface facts join this lowering when the device
+  owns both a surface and the format table.
+- **No transient reuse.** `gpu-allocator` suballocates device memory, but nothing in
+  this layer pools an object across frames, reuses one inside a frame or aliases two
+  over one allocation, so all three rows keep the rejecting value.
+- **`blendable` has no field to land in.** It is the one per-format fact
+  `TextureFormatCapabilities` does not model. It is not lost in the fold -- the
+  evidence table keeps it -- but the lowering cannot report what the contract cannot
+  name, and the field arrives when a graph first asks about blending.
+
+### 42.4 The format fold, and the one place the depth fact is asked
+
+The evidence table is keyed by `(format, sample count)` and the contract is keyed by
+format, so the boolean facts fold with `or` and the count-sensitive half is carried
+by `attachment_sample_counts`, the only field shaped for it -- the same fold the GL
+lowering performs. The evidence row's `renderable` covers both attachment kinds,
+because `Vulkan` reports one flag for each and the portable table asks one question;
+which side a format belongs to is asked of the *mapped* `Vulkan` format through
+`format::is_depth`, so the depth fact keeps the single source of truth step 4
+established. A portable format this backend cannot map has a driver answer but no
+resource to attach, and is left as no claim rather than guessed at -- the same
+direction `image_format`'s `None` already takes.
+
+### 42.5 What it cost
+
+The increment compiled with no iteration and its tests passed first run, including
+the real-adapter one. Reading the `ash` 0.38 source before the FFI is what kept it
+to zero, and the only new `ash` fact this increment used was one the previous
+increment had already recorded (`FormatFeatureFlags`' transfer bits living in
+`feature_extensions.rs` and the absence of a per-sample-count dimension). The one
+non-obvious assertion is the real test's `filterable` on `R8G8B8A8_UNORM`: it is
+mandatory with `SAMPLED_IMAGE_FILTER_LINEAR` under optimal tiling, so a failure
+there would be a real disagreement rather than an optional capability this board
+lacks.
+
+### 42.6 Proof
+
+Pure tests cover: the fail-closed floor (one raster/copy/no-present queue, no
+storage, no indirect, zero workgroup dimensions, no surface); a proved compute row
+reaching both the queue and the workgroup dimensions; both storage directions from
+one storage row; each of the three indirect rows reaching the one buffer flag and
+proving nothing about storage; the backend's own recording, transition,
+synchronization, timestamp and transient shape; the colour count and the widened
+alignment; the colour/depth attachment split; the sample-count fold; the storage and
+copy facts; the absent-versus-recorded pair; and the report order.
+
+Against the real driver: every mapped format is queried and recorded once, then the
+ledger, the adapter limits and that table are lowered together. The assertions are
+the ones `Vulkan` makes mandatory -- one raster/copy queue whose compute row equals
+the ledger's, the adapter's colour count and alignment, the workgroup dimensions
+only where compute was proved, `R8G8B8A8_UNORM` sampled, linearly filterable, a
+colour attachment at one sample and copyable both ways, `D32_SFLOAT` a depth-stencil
+attachment rather than a colour one and copyable both ways, and exactly the mapped
+formats in table order.
+
+The three required gates pass, and because this increment asks a real driver
+`scripts/conformance.ps1` was run as well and passes. It creates and owns no GPU
+object, so what the GPU gate proves here is that the hardware fixture set is
+unchanged.
+
+Still owed by step 11: the remaining ledger rows. Storage buffers, storage images,
+the three query kinds, multiview, anisotropic filtering, base vertex, first instance
+and the multi-draw rows each arrive with the step that proves them -- and this
+lowering reflects each automatically, which is the point of reading the ledger rather
+than re-deriving the facts. Step 11 is not complete.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
