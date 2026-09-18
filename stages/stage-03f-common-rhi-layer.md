@@ -3040,6 +3040,88 @@ Still owed by step 11: the occlusion and elapsed query rows, and the draw-parame
 (`BaseVertex`, `FirstInstance`) that arrive with the draw verbs and the family markers that
 would let a caller require them.
 
+## 46. W2 step 11's query-row half: occlusion and elapsed from facts the open path already read
+
+Step 11's next bounded piece records the two query rows the step still owed:
+`OcclusionQuery` and `ElapsedQuery`. Both are proved by facts `device::create` had already
+read -- the selected family's flags and its own `timestamp_valid_bits` report -- so no new
+FFI was written and the increment compiled without an iteration.
+
+### 46.1 Occlusion is core on the graphics family, and the row is the imprecise one
+
+`VK_QUERY_TYPE_OCCLUSION` is core `Vulkan` 1.0 on a graphics queue, so the row's route is
+the same structural fact `Graphics` and `Copy` already have: a device exists on a family
+whose flags contain graphics. Two details decide its shape:
+
+- the row's own statement is "a query that reports **whether** any sample passed", which is
+  the *imprecise* answer. The exact sample count is the `occlusionQueryPrecise` device
+  feature, and this device enables no feature beyond the shader-store pair, so claiming the
+  row without it would be claiming the feature rather than the query;
+- like `Copy`, the row has no numeric floor of its own, so `limits_satisfied` is stated
+  `true` rather than borrowed from a neighbouring limit. The pure test pins that with a
+  ledger whose every reported number is absent: occlusion is still proved there, which is
+  exactly what a trivially satisfied floor means.
+
+### 46.2 Elapsed is the timestamp facility used twice, and nothing else
+
+`Vulkan` has no elapsed query type. An elapsed interval is two `VK_QUERY_TYPE_TIMESTAMP`
+writes and their difference, so the row's route is the selected family's own
+`timestamp_valid_bits` report -- the fact `TimestampQuery` was recorded from in section 43.
+Where the family reported no usable timestamps the row stays **unexamined**, which is the
+same sentence the timestamp row already gives and is deliberately not a negative: nothing
+proved the domain is absent.
+
+The borrowed path being replaced draws the same line: `crates/wgpu-hal`'s Vulkan adapter
+gates its timestamp feature set on `queue_props.timestamp_valid_bits >= 36` alone and
+carries `timestamp_period` as a *value* it reports to callers rather than as a second
+permission. So this increment adds no period field to `AdapterLimits`: the
+tick-to-nanosecond conversion belongs to the step that first hands a duration in time units
+to a caller, and a floor invented for it here would be a second rule about a fact the
+capability does not name.
+
+The two rows are still recorded separately because the ledger models a *dedicated* elapsed
+facility -- the GL family's `TIME_ELAPSED`, whose `GlCapability::TimerQuery` covers elapsed
+and timestamp together -- which this API reaches through its timestamp domain. That is a
+genuine repetition rather than a duplicated rule, and it is what W4 will look at once DX12
+proves the same pair.
+
+### 46.3 What was deliberately not added
+
+The **family markers** are not here. `family.rs` carries a `CapabilityFamily` marker only
+for the domains a requirement names, and the query rows have never had one:
+`TimestampQuery`'s row landed in section 43 without one, and the way that row reaches a
+graph is the lowered `TimestampCapabilities`, not a requirement. The occlusion and elapsed
+rows have neither a marker nor a `DeviceCapabilities` field yet, so this increment records
+the ledger facts the step owed and leaves the vocabulary that would name them to the
+consumer that needs it -- the same rule section 20.4 states.
+
+Also still owed, and deliberately untouched: the draw-parameter rows (`BaseVertex`,
+`FirstInstance`), which arrive with the draw verbs whose parameter space they gate and with
+the family markers that would let a caller require them.
+
+### 46.4 Proof
+
+Pure tests cover both rows' discriminating pairs: occlusion proved in a ledger whose every
+reported number is absent, with its floor asserted trivially satisfied, and elapsed
+unexamined where the family's valid-bit report is zero against proved with a `NotRequired`
+probe where it is non-zero.
+
+Against the real driver the device test asserts occlusion is proved unconditionally -- the
+graphics family the device was created on is its route -- and elapsed exactly where
+`SelectedQueue::supports_timestamps()` is true. The fixture comment that explained the
+storage rows' absence from the unproved-row list now names the query rows as proved too, so
+that list still holds exactly the feature-gated and preserved rows.
+
+The increment compiled with no iteration. The `ash` 0.38 source was read before the rows
+were written, which is where the absence of an elapsed `QueryType` and
+`PhysicalDeviceLimits::timestamp_period` being an `f32` were settled -- the first is why
+elapsed is stated as the timestamp facility used twice, and the second is why no period
+field joined `AdapterLimits`.
+
+The three required gates pass, and because the increment's real-device test opens and drops
+a Vulkan device, `scripts/conformance.ps1` was run as well and passes (89 cases, one
+adapter).
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
