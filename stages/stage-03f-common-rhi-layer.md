@@ -1597,6 +1597,106 @@ written, which is the rule section 23.4 already records — and it is what caugh
 
 Step 6 is complete. Step 7 (one command encoder with explicit transitions) is next.
 
+## 31. W2 step 7 complete: the command encoder and its explicit transitions
+
+Step 7 is recording: one command encoder whose `vkCmdPipelineBarrier` transitions are
+driven by RenderGraph's semantic access states, with a `before == after` transition
+kept a memory dependency. It landed as two modules, `native::vulkan::barrier` (the
+pure half) and `native::vulkan::command` (the command pool and the one recorder),
+because that is where the preserved semantic and the driver call naturally separate.
+
+### 31.1 The whole translation lives in the pure half
+
+`barrier` lowers one `ResourceAccessState` onto the pipeline-stage and access masks a
+barrier needs, plus the image layout when the resource is a texture. `command` never
+spells a mask: every `vkCmdPipelineBarrier` argument comes from the lowering, so
+there is one place to be wrong instead of two.
+
+Both mappings return `Option`, and the two reasons are different sentences. The
+portable enum is `#[non_exhaustive]`, so a state added upstream is refused rather
+than lowered to a guessed mask; and the one enum is shared by buffers and textures,
+so `ColorAttachmentWrite` is refused as a buffer access and `VertexRead` is refused
+as a texture access. A wildcard would have invented a barrier for a state nobody has
+measured, which no compiler and no driver reports.
+
+Three lowerings are worth naming because a first draft guessed them:
+
+- **A sampled read's layout depends on the format.** A depth texture sampled through
+  `SHADER_READ_ONLY_OPTIMAL` is an invalid barrier, so the answer is
+  `DEPTH_STENCIL_READ_ONLY_OPTIMAL` where the mapped format is depth. The question is
+  asked of the *mapped* `Vulkan` format through `format::is_depth`, so the depth fact
+  keeps the single source of truth step 4 already established.
+- **A sampled read orders against all three shader stages.** The semantic state does
+  not say which stage reads, so narrowing it to the fragment stage would be a second,
+  unwritten fact. The borrowed Vulkan path being replaced maps its `RESOURCE` use the
+  same way.
+- **The queue family indices are `QUEUE_FAMILY_IGNORED`, not zero.** This backend
+  records and submits on logical queue 0 only, so there is no ownership transfer to
+  express; the ignored value states that, while a zero would claim the barrier is
+  about family zero.
+
+### 31.2 No equality shortcut, and a test that makes deleting it impossible
+
+Plan section 4 and the `ExecutionBackend` contract both require a same-state
+transition to remain a memory dependency. Nothing in either module compares `before`
+with `after`: the two sides are lowered independently and a barrier is built, so it
+has equal masks and an unchanged layout. A test asserts exactly that shape for both a
+buffer and an image, which means the equality shortcut cannot be added later without
+deleting a test that names the semantic.
+
+### 31.3 The owning half, and what it deliberately does not own
+
+`CommandPool` is created on the device's selected queue family, owns the pool and
+destroys it. No pool flags are passed, and the encoder begins with no begin flags:
+`ONE_TIME_SUBMIT` would promise the driver the buffer is submitted once, and the
+submission path that could keep that promise is step 9's, so claiming it here would
+be a claim with no backer.
+
+`Encoder` owns one primary command buffer and frees it on drop, which is what the
+contract asks of a dropped unfinished encoder: the recording is discarded, not
+executed. It deliberately does **not** own the pool -- a command buffer is freed
+through its pool -- so the device's pool must outlive every encoder created from it,
+stated as the same field-order invariant `ResourceTable` already carries for its
+device. Submission does not exist yet, so freeing on drop is safe, and step 9 owns
+the handoff that keeps a finished buffer alive until its fence signals.
+
+Every refusal is a value and none of them poisons the recording. The contract says
+the executor still calls the matching `end_*` after a callback error, so a refused
+transition must leave the encoder endable and its already-recorded commands intact;
+the real-driver test asserts that directly. A second `end`, or a transition after
+`end`, is refused as `NotRecording` rather than accepted idempotently, because "end
+an encoder that is not recording" is a caller mistake that silent acceptance would
+hide until submission.
+
+### 31.4 What it cost
+
+One compile iteration: the `Encoder` initializer omitted its `recording` field, which
+the compiler named immediately. One test-only correction: `ash`'s
+`ImageSubresourceRange` does **not** implement `PartialEq` -- unlike the generated
+bitflags and `ImageLayout`, which do -- so the two range-refusal tests assert
+`.is_none()` rather than `assert_eq!(..., None)`. The `ash` source was read before the
+FFI, which is what settled the whole-range spellings (`REMAINING_MIP_LEVELS`,
+`REMAINING_ARRAY_LAYERS`), the whole-buffer size (`WHOLE_SIZE`) and the fact that
+`destroy_command_pool` already frees every command buffer still allocated from it.
+
+### 31.5 Proof
+
+Pure tests cover: every named state lowering to a non-empty stage mask (an empty mask
+is not a legal barrier input); the wrong-kind refusals in both directions; the
+same-state barrier shape; the sampled-read layout following the mapped format; the
+sampled read ordering against all three shader stages; the two copy directions
+staying distinct in stage, access and layout; whole-range aspects; explicit
+subresource fields; and the zero-count range refusals. Against the real driver: a
+real command pool and a real encoder record buffer and image barriers from portable
+states over both a whole range and an explicit one, including a same-state
+transition, a state of the wrong kind is refused while the recording stays usable and
+still ends, and an ended encoder refuses further recording.
+
+The three required gates pass; `scripts/conformance.ps1` is the W2 close gate and is
+not re-run for a mid-step increment.
+
+Step 7 is complete. Step 8 (copies) is next.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
