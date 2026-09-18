@@ -1974,6 +1974,81 @@ Still owed by step 10: enabling the surface instance extensions, the `VkSurfaceK
 handle and its Win32 creation, the swapchain and its images, the acquire lease,
 present, reconfigure, and the unpresented-acquire quarantine.
 
+## 35. W2 step 10's surface-handle half: the extensions and the owned `VkSurfaceKHR`
+
+Step 10's owning half began with the two clauses that make a surface exist at all:
+the surface instance extensions and the `VkSurfaceKHR` created from the host's
+window. They landed together because neither is useful alone — an extension enabled
+for a surface that cannot be created is a claim with no object, and a surface cannot
+be created without the extension. `scripts/conformance.ps1` remains the W2 close
+gate and is not re-run for a mid-step increment.
+
+### 35.1 The extensions are verified against the same inventory, and enabled only on the surface path
+
+`surface::{SURFACE, WIN32_SURFACE, verify_surface_extensions}` is the pure half: it
+checks the exact names against the enumeration `Validation::Required` already reads,
+and reports *which* of the two is missing. `VK_KHR_surface` is checked first because
+it is the facility itself, and a near miss on case or a prefix does not satisfy the
+requirement for the same reason it does not satisfy the validation probe.
+
+`instance::open_with_surface` is the FFI half: the same load → enumerate → verify →
+create order as `open`, with both surface extensions enabled. The headless `open`
+still enables neither, so nothing about the frozen oracle's instance changed.
+`InstanceError::SurfaceExtension` is a new sentence whose three siblings already
+existed, and both verifications precede `create_instance`, so a loader that cannot
+present is refused with nothing created — the same fail-closed direction step 1
+paid for.
+
+### 35.2 The witness type, and why a flag would have been a crash
+
+`vkCreateWin32SurfaceKHR` exists only when `VK_KHR_win32_surface` was enabled, and
+`ash` substitutes a panicking stub for a function the loader did not resolve. So
+"create a surface on an instance that never enabled it" must not be expressible:
+`open_with_surface` returns `instance::SurfaceInstance`, a distinct type wrapping
+`ValidationInstance`, and `presentation::create` accepts only that. A headless
+`ValidationInstance` has no path to the surface call at all.
+
+### 35.3 The surface borrows its instance; the window lowering refuses what it cannot name
+
+`presentation::Surface<'a>` holds the `SurfaceInstance` by borrow and destroys its
+handle in `Drop`. `Vulkan` requires the parent to outlive the child, so the borrow —
+not a comment — is what makes "destroy the instance first" a compile error.
+
+`presentation::win32_create_info` lowers the host's `RawWindowHandle`, and the
+raw-window-handle enum is `#[non_exhaustive]`, so the mapping answers `Result`
+rather than inventing a value for a platform this backend has not been taught. Two
+refusals, distinct sentences: `NotWin32` for another platform's window, and
+`MissingInstance` for a Win32 window whose owning module was not reported — the same
+fact the borrowed path refuses (`wgpu-hal` `create_surface`), preserved rather than
+defaulted to null.
+
+### 35.4 What it cost
+
+One compile iteration, and it is the already-recorded lesson applied again: `ash`
+derives no `PartialEq` for `Win32SurfaceCreateInfoKHR`, so the two refusal tests
+compare `.err()` rather than a `Result` — the same shape section 31.4 recorded for
+`ImageSubresourceRange` and section 32.3 for `BufferCopy`. The `ash` 0.38 source was
+read before the FFI, which is where `HINSTANCE`/`HWND` being `isize`, the generated
+`khr::{surface,win32_surface}::Instance::new(entry, instance)` shape, and the
+unresolved-function stub were settled.
+
+### 35.5 Proof
+
+Pure tests cover the extension drift guard (each enabled `CStr` still spells the
+name the probe compares), both-present acceptance, the ordered base-then-platform
+refusals, and a near miss on either name; and the Win32 lowering field for field plus
+both refusals by name. `instance` adds the ordering test — a surface open refuses an
+empty inventory with the surface reason before validation is even asked. Against the
+real driver: a real `VkSurfaceKHR` is created from a real hidden `STATIC` window
+through a real surface-capable instance and destroyed before both parents, and
+`open_with_surface` opens a real instance on this machine.
+
+The three required gates pass.
+
+Still owed by step 10: the surface-facts query and the presentation-support query,
+the swapchain and its images, the acquire lease, present, reconfigure, and the
+unpresented-acquire quarantine.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
