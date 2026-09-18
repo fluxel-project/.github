@@ -3433,6 +3433,142 @@ Still owed by step 12: binding selection (`set_bindings`, which needs the descri
 sets), and then the two draw-parameter rows (`BaseVertex`, `FirstInstance`) step 11
 handed to it.
 
+## 50. W2 step 12's binding selection: the descriptor set and `set_bindings`
+
+Step 12's last owed verb landed: `common::binding` gained the bind-group *value*
+vocabulary, `native::vulkan::bind_group` creates and owns the `VkDescriptorPool` and
+`VkDescriptorSet` the retained textured layout fills, and `command::Encoder` gained
+`set_bindings`, which records `vkCmdBindDescriptorSets`. The two draw-parameter rows
+(`BaseVertex`, `FirstInstance`) are what step 12 still owes.
+
+### 50.1 The value vocabulary is portable, and the layout check is what fills it in
+
+`common::binding` now owns the value half of its own vocabulary, beside the layout
+half W1 landed:
+
+- `BindingResource` — `Buffer { buffer, offset, size }`, `Texture(TextureId)` or
+  `Sampler(SamplerId)`. It names base resource ids, never a backend handle, so a raw
+  handle cannot be written into one at all;
+- `BindGroupEntry { binding, resource }`, and `BindGroupLayout::entry(binding)` so
+  "which binding numbers exist" has one answer.
+
+A texture entry is **one** variant for both the sampled and the storage case. Which
+descriptor type and which image layout it lowers to is the *layout's* answer
+(`BindingKind::Texture` versus `BindingKind::StorageTexture`), and a second spelling
+in the entry could disagree with it. That is also why `common` is where the value
+belongs rather than the native module: section 9.1 already assigns bind-group
+vocabulary to `common`, and this is the same data model the next backend will consume
+rather than two copies that can drift.
+
+### 50.2 The set layout a group is created against is the pipeline layout's own
+
+`Vulkan` requires the descriptor set a command buffer binds to be compatible with the
+pipeline layout it was allocated against. The only shape that makes that a fact of
+construction is allocating the set from the exact `VkDescriptorSetLayout` the pipeline
+layout was built over, so `bind_group::create` takes `&PipelineLayout` and reaches the
+handle through the new `PipelineLayout::set_layout(index)`. A second set layout
+created from an equal description would be a compatibility question this layer cannot
+answer.
+
+That accessor needed the description too — validation and the pool sizes are read from
+it — so **`SetLayout` now keeps the `BindGroupLayout` it was created from**. This
+revises a sentence in `descriptor`'s own module docs ("never the description it was
+built from"), and the revision is recorded there: the driver does not need the
+description again, but the bind-group step does, and the alternative is asking a
+caller that already moved its `SetLayout` into a `PipelineLayout` for a description it
+no longer holds.
+
+### 50.3 The pool is owned by the group, deliberately, and not pooled
+
+`Vulkan` frees a descriptor set when its pool is destroyed, so one pool per group is
+the smallest owner that makes the set's lifetime the group's: `BindGroup` owns the
+pool, the set, the pipeline-layout handle and the set index, and its `Drop` destroys
+the pool — which is the whole release, because the pool is created without
+`FREE_DESCRIPTOR_SET`. A device-owned pool with a free list is the alternative, and it
+is a *pooling* policy this backend deliberately does not have yet: the transient-reuse
+rows are the rejecting value in step 11's lowering and nothing reuses a set across
+recordings, so this type becomes a handle into the device's pool when a consumer needs
+that recycling.
+
+The pool sizes are one entry per *distinct* descriptor type with the bindings that
+lower to it counted: `VkDescriptorPoolCreateInfo` rejects two sizes for one type, and
+a second entry would silently make the total a lie.
+
+### 50.4 Every refusal is a value, and a dynamic binding is refused
+
+`bind_group::validate` and the range lowering run before the pool exists, so a refused
+group reaches no driver entry point:
+
+| Refusal | Sentence |
+| --- | --- |
+| an entry names an undeclared binding | `UnknownBinding` |
+| a declared binding has no entry | `MissingBinding` |
+| two entries for one binding | `DuplicateBinding` |
+| the resource kind does not match the binding | `KindMismatch` |
+| a layout minimum of zero | `ZeroMinimum` |
+| a bind-time dynamic offset | `DynamicOffset` |
+| a zero buffer range | `ZeroRange` |
+| a range under the layout's minimum | `RangeTooSmall` |
+| a range past the buffer, including overflow | `RangeOutOfBounds` |
+| a stale buffer, texture or sampler id | `UnknownBuffer` / `UnknownTexture` / `UnknownSampler` |
+
+`DynamicOffset` is the one deliberate refusal: this layer's vocabulary has no place to
+state the offset a *bind* supplies, so a dynamic binding cannot be honoured, and
+recording it with a fixed offset would hand the driver a descriptor it reads at the
+wrong place. `ZeroMinimum` is the refusal `common::binding` already promised this
+check would make. The range checks are the copy step's rule: the end is computed in
+checked arithmetic, so the `u64::MAX` case is an overrun rather than a wrapped range
+that passes.
+
+The descriptor type comes from `descriptor::descriptor_type` — one function for layout
+creation and bind-group creation — and a texture's image layout from
+`bind_group::image_layout`, whose one format-dependent answer asks the *mapped*
+`Vulkan` format through `format::is_depth`. A depth texture therefore binds through
+`DEPTH_STENCIL_READ_ONLY_OPTIMAL` and a colour one through `SHADER_READ_ONLY_OPTIMAL`,
+and a storage texture through `GENERAL`, which is the layout `barrier::image_state`
+already gives the storage states.
+
+### 50.5 What it cost
+
+One compile iteration, and it is the trap sections 31.4, 32.3, 35.4 and 47.4 already
+recorded: `ash` derives no `PartialEq` for `DescriptorBufferInfo`, so the four
+range-refusal assertions compare `.err()` rather than a whole `Result`. The `ash` 0.38
+source was read before the FFI, which settled three shapes a first draft would have
+guessed: `WriteDescriptorSet::buffer_info`/`image_info` **derive `descriptor_count`
+from the slice length** (so the count is not written separately), the two info structs
+derive `Copy, Clone, Default` but no `PartialEq`, and `DescriptorPoolCreateInfo::max_sets`
+is zero by default -- a value `Vulkan` rejects -- which is why it is written as one.
+
+### 50.6 The real-driver test and the extracted fixture
+
+The recorder's draw tests and the new bind-group tests both need a real colour target
+and the framebuffer a pass begins over it, so that fixture moved to
+`test_support::colour_target_pass` and the recorder's tests import it rather than
+keeping the second copy. That is section 37.5's rule applied to the pass target.
+
+Against the real driver: a real `VkDescriptorPool` and `VkDescriptorSet` are created
+from the pipeline layout's own set layout and filled with the retained textured
+layout's three real writes; a real raster pipeline over that layout is bound inside a
+real pass, the set binds, a `vkCmdDraw` records, and the submission reports `Complete`
+-- so the set the driver binds is one it actually reads. A destroyed buffer id and a
+sampler placed at a buffer binding are each refused with their own sentence, an index
+with no set layout behind it is `NoSuchSet`, an empty layout allocates a set from a
+pool with no sizes, and `set_bindings` with no pass open is `NoPass` with the
+recording still endable.
+
+The pure half covers the pool-size fold (including two bindings of one type sharing
+one entry), both image layouts and their format dependence, the four range refusals,
+and every validation refusal above. The increment compiled with one iteration (the
+`PartialEq` trap) and its tests passed first run. The three required gates pass.
+
+Because the increment creates a descriptor set and submits real GPU work,
+`scripts/conformance.ps1` was run as well and passes (89 cases, one adapter); it adds
+no `#[ignore]` fixture, so the gate's counted fixture set is unchanged.
+
+Still owed by step 12: the two draw-parameter rows (`BaseVertex`, `FirstInstance`)
+that arrive with the family markers that would let a caller require them. The draw
+verbs keep both fixed at zero until then, which is what plan section 20.1 requires.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
