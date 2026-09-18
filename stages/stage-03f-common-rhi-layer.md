@@ -3569,6 +3569,73 @@ Still owed by step 12: the two draw-parameter rows (`BaseVertex`, `FirstInstance
 that arrive with the family markers that would let a caller require them. The draw
 verbs keep both fixed at zero until then, which is what plan section 20.1 requires.
 
+## 51. W2 step 12 complete: the draw-parameter rows and their families
+
+Step 12's last owed item landed: `Capability::BaseVertex` and
+`Capability::FirstInstance` are recorded by `device::ledger`, and `common::api::family`
+gained the two family markers that let a `Requirement` name them. Step 12 is complete,
+and with it every step in `native/vulkan/mod.rs`'s ordered list.
+
+### 51.1 The rows are the draw commands' own parameters, and the indirect feature is not theirs
+
+`vkCmdDraw` and `vkCmdDrawIndexed` take `firstInstance`, and `vkCmdDrawIndexed` takes
+`vertexOffset`, all core `Vulkan` 1.0 and none gated by a device feature -- so the two
+rows are the same structural proof `Copy` and `OcclusionQuery` already have: a device
+exists on a graphics family, step 12 records both commands on it, and no command was
+needed (`NotRequired`). Neither row borrows a numeric floor: `limits_satisfied` is
+stated `true` rather than tied to a limit the row does not read, the same shape the
+copy row and the occlusion row already use. The pure test pins that with a ledger whose
+every reported number is absent, which is exactly what a trivially satisfied floor
+means.
+
+The one nearby feature is deliberately not claimed. `drawIndirectFirstInstance` gates
+the first instance of an *indirect* draw, and the `IndirectDraw` row that would name
+that path stays unproved because its count is `MultiDrawIndirect` (section 43.3).
+Recording `FirstInstance` from the direct command therefore claims nothing about the
+indirect form, and the `ledger` doc says so where the row is recorded.
+
+### 51.2 Two rows, not one advanced-draw row
+
+`BaseVertex` and `FirstInstance` are separate ledger rows and separate markers, because
+plan section 20.1's rule is one independently negotiable batch per family. A device may
+add a base offset without supporting a non-zero first instance (and the reverse), so
+neither requirement may be satisfied by the other's row; the test asserts both
+directions rather than only that the rows differ, because "distinct" alone would not
+catch a `ROW` that pointed at a third row both requirements happened to share.
+
+The markers are markers, not traits, and that is the honest bounded outcome.
+`GraphicsApi`'s draw verbs deliberately fix both parameters at zero -- a base family's
+parameter space must not be able to name another family's capability -- so the verbs
+that name them are separate families, and no retained recipe declares either one.
+Section 4.7 of the interface contract records the pair beside `Multiview`,
+`AsyncCompute` and `TransferQueue` for the same shape of reason. Writing their methods
+now would be vocabulary ahead of its consumer, which section 20.4 forbids; and no real
+backend implements `Provides<Graphics>` yet, so the handle those traits would hang off
+does not exist. The rows are proved and the requirement can be stated; the verbs arrive
+with the consumer that needs them.
+
+### 51.3 Proof
+
+Pure: both rows are proved with a `NotRequired` probe and a trivially satisfied floor
+in a ledger whose every reported number is absent, and the two families' requirements
+are satisfied only by their own row, in both directions. Against the real driver, the
+device this machine opens asserts both rows, beside the `IndirectDraw` row that stays
+unproved.
+
+The increment compiled with no iteration, and no FFI was written: the rows restate a
+property of the `vkCmdDraw` / `vkCmdDrawIndexed` signatures the step 12 draw verbs
+already call, so section 23.4's "read the `ash` source first" rule was satisfied by the
+previous increment's reading rather than by a new one.
+
+The three required gates pass. Because the increment reads a real driver,
+`scripts/conformance.ps1` was run as well and passes.
+
+The ordered step list is now exhausted, so section 23.1's rule moves to section 20's
+table: **W2's own closure** is the next piece -- wiring `VulkanDevice` to the family
+traits (`Provides<Graphics>` first), so the frozen oracle can run on this backend and
+`scripts/conformance.ps1` becomes its acceptance rather than a check that the hardware
+fixture set is unchanged.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
