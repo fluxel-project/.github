@@ -1697,6 +1697,106 @@ not re-run for a mid-step increment.
 
 Step 7 is complete. Step 8 (copies) is next.
 
+## 32. W2 step 8 complete: the two copy routes
+
+`native::vulkan::copy` lands the pure half of step 8 and `Encoder::copy_buffer` /
+`Encoder::copy_texture` the owning half, so the two routes this family owns --
+`vkCmdCopyBuffer` and `vkCmdCopyImage` -- are recorded from portable regions. The
+buffer/image routes (`vkCmdCopyBufferToImage` / `vkCmdCopyImageToBuffer`) are
+deliberately **not** here: they belong to the RHI's own staging upload and readback
+path, neither has vocabulary in `CopyApi`, and a record for a call nobody can make
+would be a second truth about the same bytes. They land with the step that first
+needs them.
+
+### 32.1 The checks the shared layer states, repeated where the driver is reached
+
+Step 8's wording is exact: the alignment and range checks "the safe layer already
+performs" are repeated at the boundary. The rules are not new ones. A buffer
+region's offsets and size are aligned to `COPY_BUFFER_ALIGNMENT` and fit both
+declared sizes, and the end is computed in **checked** arithmetic -- the `u64::MAX`
+trap is a `Overflow` refusal rather than a wrapped range that passes the bounds
+test. A texture region's extent is non-zero on every axis, both mips exist, and the
+origin plus extent fits the mip extent of the image it addresses.
+
+The alignment is written as a local constant and a test pins it against
+`wgpu_types::COPY_BUFFER_ALIGNMENT`, because the value is a contract between two
+crates and a change to either side would otherwise move the other silently.
+
+### 32.2 Two decisions this module had to make, and both are refusals
+
+`TextureCopyRegion` carries **no aspect**, and that is right: the aspect follows
+from the image's format, which the resource table owns. It is asked of the *mapped*
+`Vulkan` format through `texture::aspect`, so the depth fact keeps the single source
+of truth `format::is_depth` already gives it. A depth texture therefore copies
+through the depth aspect without the caller naming one.
+
+The second is layers, and the honest answer was found by reading what the borrowed
+path and the shared layer actually do rather than by extending the vocabulary:
+
+- the shared layer (`rendergraph/src/execution/recording/copy.rs`) refuses
+  `extent[2] != 1` and a non-zero `origin[2]` **for every dimension**, at `D2`
+  descriptors with `array_layers == 1`, `sample_count == 1` and no `Depth32Float`;
+- the borrowed `Vulkan` path (`wgpu-hal`, `conv::map_subresource_layers`) writes
+  `layer_count = 1` unconditionally.
+
+Both resolve the portable region's z ambiguity -- layer index and layer count, or
+depth coordinate and box depth -- by refusing every multi-layer shape, so this
+module refuses the same two by name (`LayerOrigin`, `LayerCount`) instead of
+inventing one reading for a region the graph could not have built. The result is
+strictly narrower than the shared layer on the descriptor axis and **exactly equal**
+to it on the region axis: every region the shared layer accepts records here, with
+the same aspect, mip, base layer and one-layer subresource the borrowed path
+writes. A layered or volume copy arrives with the consumer that needs it, together
+with the vocabulary to say which layer it addresses. That is plan section 3's rule
+applied to a decision the first draft of this module got wrong in both directions:
+it first allowed any origin and any depth, then briefly allowed a full layer range
+that neither the contract nor the driver path being replaced supports.
+
+Two smaller facts are worth recording because a first draft guessed them:
+
+- a depth-addressable image's z axis is a **depth**, and a two-dimensional image's
+  is its **array layer count**, so the mip-extent helper reads
+  `TextureDimension::D3 ? extent.depth : array_layers`. Reading `extent.depth` for
+  both would let a box address layers an image does not have, and reading
+  `array_layers` for both would refuse a legal volume.
+- the command lays the *destination* image out `TRANSFER_DST_OPTIMAL` and the
+  source `TRANSFER_SRC_OPTIMAL`, which is exactly the layout pair
+  `barrier::image_state` gives `CopySource` and `CopyDestination`; a caller that
+  transitions through those states is consistent with the copy it records.
+
+### 32.3 What it cost
+
+Two compile iterations, both test-side and both worth keeping in the record:
+
+- `assert_eq!` cannot compare a `Result<vk::BufferCopy, _>` or
+  `Result<vk::ImageCopy, _>`, because `ash` derives no `PartialEq` for those
+  structs -- the generated bitflags and layouts do, and these do not. The tests
+  compare `.err()`, which is the same shape section 31.4 already recorded for
+  `ImageSubresourceRange`.
+- one assertion was wrong rather than the code, in the same family as the previous
+  increment's: `u64::MAX - 4` is not a multiple of the alignment, so the case meant
+  to isolate overflow was refused as `Misaligned` instead. The size is now
+  `u64::MAX - 3`, which is.
+
+### 32.4 Proof
+
+Pure tests cover the field-for-field buffer lowering, the zero/misaligned/overflow/
+out-of-bounds refusals by name, the same four for textures plus the differing-format,
+unknown-mip, zero-extent, layer-origin and layer-count refusals, the mip-halved
+bounds, the depth aspect, and the one-layer shape. Against the real driver: a real
+command pool records a real `vkCmdCopyBuffer` between two real `VkBuffer`s and a
+real `vkCmdCopyImage` between two real `VkImage`s over their real transfer
+transitions, then ends; a misaligned region, an out-of-bounds box and a
+differing-format pair are each refused as their own sentence while the recording
+stays usable and still ends; and a destroyed id is shown to resolve to no handle at
+the table, so a stale generation cannot become a driver call.
+
+The three required gates pass; `scripts/conformance.ps1` is the W2 close gate and
+is not re-run for a mid-step increment. No `#[ignore]` fixture changed, so the gate's
+counted fixture set is untouched.
+
+Step 8 is complete. Step 9 (submission and completion) is next.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
