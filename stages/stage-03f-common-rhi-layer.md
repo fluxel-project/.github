@@ -4138,6 +4138,118 @@ The three required gates pass. Because the increment creates real GPU resources,
 Still owed by step 13: the indirect-dispatch family, and then the execution-layer
 migration that lets the frozen oracle run on this backend.
 
+## 57. W2 step 13's indirect-dispatch family: the wrapper handle and the command-buffer read
+
+Step 13's next family landed: `native::vulkan::indirect` is the pure half,
+`family::IndirectDispatchRecording` with `Provides<IndirectDispatch>` is the owning
+half, and `command::Encoder` gained `dispatch_indirect`. The row was already proved in
+section 43, so no new capability fact was needed. The execution-layer migration remains
+owed by step 13.
+
+### 57.1 The handle wraps the compute recording, and the asymmetry is the point
+
+An indirect dispatch is a dispatch. `vkCmdDispatchIndirect` reads its counts from a
+buffer instead of taking them as arguments, but the command still needs a compute
+pipeline bound in the recording, so a handle that owned a second, separate recording
+would have no pipeline in it and no way to get one. `IndirectDispatchRecording`
+therefore **wraps** `ComputeRecording` -- the bracket, the pipeline, the bindings and
+the transitions are the compute family's own body -- and implements `ComputeApi`
+beside `IndirectDispatchApi`.
+
+The `ComputeApi` impl is sound in exactly one direction, and that asymmetry is the
+design rather than an accident of convenience:
+
+- `device::ledger` records `Capability::IndirectDispatch` **only** beside a proved
+  `Capability::Compute` row, and keeps that row's own numeric floor, so a caller that
+  negotiated the indirect family cannot reach an unproved compute capability;
+- `ComputeRecording` does **not** implement `IndirectDispatchApi`, so a caller that
+  negotiated only `Compute` still cannot name the indirect form.
+
+`ComputeRecording` gained one private `recording_mut` accessor so the sibling can reach
+the table and the recorder through the type that owns the field, and the delegation is
+one line per verb. A second `Recording` implementation would have been the "second
+spelling of one shape" section 53.2 already extracted away once.
+
+### 57.2 The pure rule is the read, and the counts are deliberately not inspected
+
+`indirect::{COMMAND_SIZE, COMMAND_ALIGNMENT, IndirectRangeError, dispatch_range}` owns
+the two things the specification says about the read: the offset must be a multiple of
+four, and the twelve-byte `VkDispatchIndirectCommand` must fit inside the buffer the
+caller declared, with the end computed in checked arithmetic so `u64::MAX - 3` is an
+`Overflow` rather than a wrapped range that passes. The three refusals stay separate
+because they are different fixes, and a test pins `COMMAND_SIZE` and
+`COMMAND_ALIGNMENT` against the driver's own struct so the constant and the ABI cannot
+drift apart silently.
+
+The counts are not checked, and that is the deliberate difference from
+`compute::dispatch_groups`. There the counts are the caller's arguments, so the direct
+form refuses a zero axis rather than letting a mistake look like a dispatch that
+legitimately did nothing. Here the counts are data the graph wrote through some earlier
+command, so this layer cannot see them at record time and must not pretend to: a zero
+axis inside the buffer is the driver's own legal no-op, and the graph's compiler is what
+established the contents.
+
+### 57.3 The declared usage is the boundary check, read from the table
+
+`dispatch_indirect` reads three facts from the device's table and none from the driver:
+the buffer's handle, its created size and **the usage it was declared with**. A buffer
+the graph created for vertices is refused as `UsageNotDeclared` -- it is the buffer
+step's "the mapping never widens" rule (section 18) applied at the boundary where a
+dispatch is recorded, the same rule the storage-buffer role applied in section 55.3.
+The id lookup answers `UnknownBuffer` for a foreign or replaced generation before the
+driver is reached, because the table's key is the whole stamped `ResourceId`.
+
+`IndirectDispatchError` carries `RecordError` and the two id sentences plus
+`UsageNotDeclared`, and the family's `ComputeApi` impl answers the same type: one
+handle, one error vocabulary. The conversion from the wrapped recording's
+`ComputeError` is total over its three variants, so there is no impossible arm and no
+invented value.
+
+### 57.4 What it cost, and the one test-only piece
+
+Nothing: the increment compiled with no iteration. The `ash` 0.38 source was read before
+the FFI, which settled `cmd_dispatch_indirect(command_buffer, buffer, offset)` and
+`cmd_update_buffer(command_buffer, buffer, offset, data)` -- the second being the reason
+the real-driver test can hand the dispatch known counts at all.
+
+That is the one piece worth recording. This backend owns no indirect-command *writer*:
+producing the counts is the graph's own business, and the staging upload path is a later
+step's. A test that dispatched from a buffer of uninitialized device memory would hand
+the driver an unknown number of workgroups, which is exactly the unbounded work a gate
+must not do. `test_support::write_indirect_counts` therefore records one
+`vkCmdUpdateBuffer` of three `u32` counts in the test's own recording, on a buffer the
+graph declared `Indirect` **and** `CopyDestination` -- the usage pair a real indirect
+command buffer carries, because its contents arrive through a transfer. The helper is
+`#[cfg(test)]` and states that it is a fixture, not vocabulary.
+
+### 57.5 Proof
+
+Pure: `indirect` covers the command that fits (including one ending exactly at the
+buffer's end), the unaligned offsets, a command past the buffer in both directions, the
+overflow shape that is unaligned-aware (`u64::MAX - 4` names the low bits while
+`u64::MAX - 3` names the overflow), and the constants pinned against the driver's
+struct.
+
+Against the real driver, in `command`'s own tests: a real compute pipeline and a real
+recording whose command buffer is written by a real `vkCmdUpdateBuffer` between its two
+transfer/indirect transitions records a real `vkCmdDispatchIndirect`, is submitted and
+reports `Complete`; and the bracket guard, the misaligned offset, the out-of-bounds read
+and the overflowing offset are each refused as their own sentence while the recording
+stays usable and endable. In `family`'s tests: `require::<_, IndirectDispatch>(&device)`
+yields the handle, it reports the device's own stamp, the wrapped compute bracket and
+pipeline record, the graph's transition moves the command buffer into `IndirectRead`, the
+dispatch records and the submission reports `Complete`; the second fixture asserts a
+dispatch with no compute pass as `Recording(NoPass)`, a foreign id as `UnknownBuffer`, a
+vertex buffer as `UsageNotDeclared`, the two range refusals, and a finished handle
+answering `NotRecording` -- with the recording usable and still endable after every
+value refusal.
+
+The three required gates pass. Because the increment creates and submits real GPU work,
+`scripts/conformance.ps1` was run as well and passes.
+
+Still owed by step 13: the execution-layer migration that lets the frozen oracle run on
+this backend.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
