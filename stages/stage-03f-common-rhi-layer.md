@@ -2857,6 +2857,90 @@ storage fact), the occlusion and elapsed query rows, and the draw-parameter rows
 (`BaseVertex`, `FirstInstance`) that arrive with the draw verbs and the family
 markers that would let a caller require them.
 
+## 44. W2 step 11's storage half: the shader-store features and the storage-buffer row
+
+Step 11's next bounded piece landed: `native::vulkan::features` (the pure half),
+the device-feature query and enablement in `native::vulkan::device`, and the
+`StorageBuffer` row the created device now proves. `capability`'s lowering needed
+no edit for the row itself -- it already read `ledger.supports(StorageBuffer)` --
+which is the point section 42.1 made about reading the ledger instead of
+re-deriving the facts.
+
+### 44.1 One row, two stage-gated facts, and both are required
+
+`Capability::StorageBuffer` describes a buffer a shader may read **and** write, and
+`Vulkan` 1.0 gates the write half by *stage*: reading a storage buffer is core,
+while a fragment-shader write needs `fragmentStoresAndAtomics` and a vertex-shader
+write needs `vertexPipelineStoresAndAtomics`. `VkPhysicalDeviceFeatures` enables
+neither by default, so the row could not be claimed before this increment without
+authorizing a shader the device refuses -- which is exactly the claim section 43.3
+said was missing.
+
+`StoreFeatures::proves_storage_buffers` is therefore **both** halves, and the tests
+pin each half alone as a refusal. Reporting the row from one half would be the
+permissive direction: a row proved too early records a pipeline the driver rejects,
+while a row left unproved refuses a graph the device could have run.
+
+### 44.2 The requested set is the adapter's report narrowed, never a preference
+
+`features::request` answers from `vkGetPhysicalDeviceFeatures` and nothing else. An
+unreported feature stays disabled, and that is a hard rule rather than caution:
+enabling one the adapter's `VkPhysicalDeviceFeatures` does not contain makes
+`vkCreateDevice` fail with `FEATURE_NOT_PRESENT`, so "request it anyway and see"
+turns a device that could rasterize into no device at all. A test asserts the
+returned value is the *whole* feature list the create-info is handed, so a feature
+that was reported and that no step establishes a row with -- `samplerAnisotropy`,
+`multiDrawIndirect`, `independentBlend` -- still comes out disabled rather than
+arriving by inheritance from a default.
+
+`features::store` then describes the set that was **requested**, so `ledger` reads
+the features the device was created with instead of a second reading of the
+adapter. The two can only differ if a driver reported a feature and then refused the
+device that enabled it, which is a `DeviceError::Creation` rather than a silently
+unproved row.
+
+### 44.3 The floor is the driver's own binding-size report
+
+The row's numeric floor is `max_storage_buffer_binding_size != 0`: a device whose
+maximum storage-buffer range is zero can bind none, and the ledger's rule is that
+numbers which reject the domain cannot be recorded as a proved route. It is stated
+as its own read rather than borrowed from a neighbouring limit, the same way the
+`Copy` row's trivially satisfied floor is.
+
+### 44.4 Proof, and what the real-driver half actually asserts
+
+Pure: each half alone leaves the row unexamined; both halves prove it with a
+`NotRequired` probe; a zero binding size leaves it examined-and-refused; every
+other feature stays disabled; a reported feature the adapter lacks is not requested.
+Against the real driver the device test reads the adapter's report again, puts it
+through the same pure `request`, and asserts the device's stored feature set equals
+that -- so the assertion is that creation enabled exactly what the rule decided, not
+that the ledger agrees with itself -- and then asserts the row is proved exactly
+where that set carries both halves. `capability`'s real test adds the discriminating
+pair for the lowering: `buffers.storage_read == ledger.supports(StorageBuffer)`, and
+both directions equal because one row serves them.
+
+The increment compiled with no iteration. The `ash` 0.38 source was read before the
+FFI, which is where three shapes were settled: `get_physical_device_features`
+returns `vk::PhysicalDeviceFeatures` directly rather than a `VkResult`,
+`DeviceCreateInfo::enabled_features` takes a **borrowed** `&'a
+PhysicalDeviceFeatures` (so the feature set is a binding that outlives the
+create-info, like the queue-info slice), and `PhysicalDeviceFeatures` derives
+`Default` but **not** `PartialEq`, which is why the tests assert fields and why the
+ledger reads a small `StoreFeatures` value instead of the `ash` struct.
+
+The three required gates pass, and because the increment queries and creates a real
+device, `scripts/conformance.ps1` was run as well and passes. It creates and owns
+no GPU object beyond the device, so what the GPU gate proves here is that the
+hardware fixture set is unchanged.
+
+Still owed by step 11: `StorageImage` -- the same feature pair **plus** a per-format
+storage fact, which needs the device to own a format table the ledger call has no
+access to today, so it is not a one-line addition to this row -- the occlusion and
+elapsed query rows, and the draw-parameter rows (`BaseVertex`, `FirstInstance`)
+that arrive with the draw verbs and the family markers that would let a caller
+require them.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
