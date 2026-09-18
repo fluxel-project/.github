@@ -2436,6 +2436,80 @@ recorded present-semaphore inference rather than guessed, and the borrowed path'
 written. The three required gates pass, and because this increment reaches real
 hardware `scripts/conformance.ps1` was run as well and passes.
 
+## 40. W2 step 10 complete: the `old_swapchain` rebuild
+
+`Swapchain::reconfigure` landed beside `create`, and step 10 is complete. The rebuild
+is the same facts read and the same pure contract decision as a fresh creation -- the
+two now share one private `build` -- and the only new input is the `old_swapchain`
+handle, which `surface::swapchain_create_info` gained as a parameter instead of
+writing `VK_NULL_HANDLE` itself.
+
+### 40.1 The specification fact that decided the ownership shape
+
+`VkSwapchainCreateInfoKHR::oldSwapchain` is not only a hint that lets the presentation
+engine reuse resources: **the old swapchain is retired when it is passed, even if the
+creation of the new one fails.** That single fact is why `reconfigure` takes `self`
+rather than `&mut self`. If it took a borrow, a failed rebuild would leave the caller
+holding a swapchain the driver had already retired, and the type would be saying
+something about the object that is no longer true. Consuming it instead routes the
+predecessor through its own `Drop` -- device idle, retained present semaphores, then
+the handle -- on the success and failure paths alike, so there is no state in which a
+retired swapchain is still believed live.
+
+The refusals that happen *before* the driver is reached still happen before anything
+is created: the queue family's presentation support, the facts read, and the contract
+decision are all ahead of `create_swapchain`, and a refused image read still destroys
+the swapchain it just made. What consumption changes is only the caller-visible shape
+after the call: a rebuild either returns a live replacement or leaves no swapchain at
+all, never a predecessor the driver has retired.
+
+### 40.2 A poisoned surface refuses the rebuild, and that is the recovery boundary
+
+`SwapchainError::Poisoned` is checked first, before any driver call. It has to be: a
+rebuilt swapchain would assume the acquire semaphore an unpresented image left behind
+is reusable, which is exactly what plan section 4's quarantine forbids. The
+`presentation` façade already classifies every transition on a poisoned surface as
+`RefusePoisoned`, so the backend and the façade agree rather than one of them being
+permissive.
+
+This also fixes where "the recovery of a poisoned surface" actually lives. It is not a
+swapchain operation: the quarantine is a property of the **surface** -- the retained
+semaphore belongs to the presentation engine's relationship with that `VkSurfaceKHR`
+-- so recovery means replacing the surface (and its window), not rebuilding the
+swapchain on top of it. That is why step 10's remaining wording was a refusal and not
+a repair.
+
+### 40.3 One mistake removed by adding a field
+
+`reconfigure` used to need a `physical_device` parameter, because the contract must be
+re-decided from the surface's *current* facts. A parameter would also have let a caller
+ask a different adapter about a surface this swapchain did not create. `Swapchain` now
+owns the adapter it was created on, so the rebuild reads the facts from the same device
+the swapchain belongs to and the mistake is unrepresentable rather than checked.
+
+### 40.4 Proof
+
+Pure: `swapchain_create_info` is pinned for both meanings of the field -- null for a
+fresh creation and the predecessor for a rebuild -- beside the existing field-for-field
+assertions.
+
+Against the real driver: a real swapchain acquires and presents a frame (which is what
+leaves a retained present semaphore for the predecessor's teardown to retire), a real
+`reconfigure` creates its replacement over that predecessor, the replacement's own
+images are non-empty, its contract is the fixed one with a non-zero extent, it starts
+with no retained present semaphore, and it acquires and presents a frame of its own
+without poisoning the surface. A second test shows an unpresented acquire quarantining
+the surface and the rebuild then answering `Poisoned`, before the driver.
+
+The three required gates pass, and because this increment reaches real hardware
+`scripts/conformance.ps1` was run as well and passes. The increment compiled with no
+iteration; the `ash` 0.38 source was read before the FFI, and the retirement rule was
+taken from the specification's own note on `oldSwapchain` rather than inferred from
+the borrowed path -- which is what settled the ownership shape in 40.1 before it was
+written.
+
+Step 10 is complete. Step 11 (capability lowering) is next.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
