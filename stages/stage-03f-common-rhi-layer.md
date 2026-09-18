@@ -3326,6 +3326,113 @@ The three required gates pass. Because this increment creates and submits real G
 Still owed by step 12: the vertex/index/viewport/scissor and pipeline/binding verbs, the
 draws, and then the draw-parameter rows step 11 handed to it.
 
+## 49. W2 step 12's state and draw verbs
+
+Step 12 now records real draws. `native::vulkan::draw` is the pure half -- the
+viewport, the scissor, the index type and the half-open ranges -- and the recording
+encoder gained the seven verbs that use it: `set_raster_pipeline`, `set_viewport`,
+`set_scissor`, `set_vertex_buffer`, `set_index_buffer`, `draw` and `draw_indexed`.
+Binding selection (`set_bindings`, which needs the descriptor sets) is the one piece
+of step 12 still owed.
+
+### 49.1 The Y flip is a preserved semantic, and it needs a device extension
+
+Step 6 emits the retained WGSL with `ADJUST_COORDINATE_SPACE` clear, matching the
+borrowed `wgpu-hal` Vulkan path, so the emitted `BuiltIn::Position` is wgpu's Y-up
+clip space. `Vulkan` maps a positive viewport height to the *bottom* of a
+top-left-origin framebuffer, and the borrowed path reconciles the two by flipping the
+**viewport** rather than the shader: `y = y + height`, `height = -height`
+(`wgpu-hal` `vulkan/command.rs::set_viewport`). `draw::viewport` writes the same two
+fields, so the frozen oracle's geometry is not flipped.
+
+A negative viewport height is a validation error on a Vulkan 1.0 device unless
+`VK_KHR_maintenance1` is enabled, and the instance this backend requests is 1.0. The
+extension is therefore verified against the physical device's own inventory and
+enabled on **both** device entry points, and the headless path now reads that
+inventory where it previously read none. That is a change to step 2's contract, and
+it is the right one: the borrowed path hides an adapter that cannot report the
+extension (`wgpu-hal` `adapter.rs`), so requiring it is what the frozen oracle
+already effectively does. `MissingDeviceExtension::Maintenance1` is the named
+refusal, and `open_with_swapchain` verifies it beside `VK_KHR_swapchain` against one
+inventory read.
+
+The flip and the extension are one decision, and the `draw` module docs say so where
+a reader looking for either will find them. Two pure tests pin the flip's two fields
+and the offset it follows, which is what makes a later "simplification" that drops
+the negative height fail instead of silently rotating every recipe.
+
+### 49.2 The raster verbs belong to the open pass
+
+All seven answer `RecordError::NoPass` while no pass is open. `Vulkan` permits most
+of them outside a render pass, but it treats them as command-buffer state the *next*
+pass inherits, and this backend's execution model has no such state to inherit: a
+pass begins with exactly the state its own commands set. That is the same fail-closed
+direction the bracket already takes for a barrier, a copy or an `end` inside a pass,
+and it keeps one sentence for "this verb is not legal in this state".
+
+### 49.3 The checks, and the one mapping that cannot be a wildcard
+
+Viewport and scissor are refused before the driver when `Vulkan` would reject them: a
+non-finite coordinate, a zero or non-finite extent, a depth outside `[0, 1]`, a
+reversed depth range, a zero scissor and a scissor offset above `i32::MAX` (the
+borrowed path's `as i32` would have wrapped it negative). An inverted vertex or index
+range is refused for step 8's reason in a `u32`: `end - start` would wrap, so the
+count is computed with `checked_sub`.
+
+`IndexFormat` is this workspace's own closed enum, so `draw::index_type` is
+exhaustive with no wildcard -- the opposite shape from a mapping over a
+`#[non_exhaustive]` portable enum, which returns `Option`. The pipeline is bound
+through `RasterPipeline::handle`, so the layout the pipeline owns stays alive for as
+long as the binding can be used.
+
+### 49.4 Shared test scaffolding, extracted rather than copied again
+
+The recorder test needs the same minimal raster recipe the pipeline tests create
+against, so `test_support` gained it -- the two Naga-emitted SPIR-V modules,
+`colour_only_state`, `position_stream` and `raster_shaders` -- and `pipeline`'s tests
+now import them instead of defining a second copy that could drift. That is section
+37.5's rule applied to the fixtures rather than to the window.
+
+### 49.5 What it cost
+
+One compile iteration, and it is the lesson section 31.4 already recorded: `ash`
+derives no `PartialEq` for `vk::Viewport` (unlike `vk::Rect2D`, `Offset2D` and
+`Extent2D`), so the viewport-refusal test compares `.err()` rather than a whole
+`Result`. One clippy correction: `clippy::reversed_empty_ranges` refuses a literal
+`3..2`, so the inverted-range cases build their ends from locals -- the range is
+lowered, never iterated.
+
+The `ash` 0.38 source was read before the FFI, which settled the seven command
+signatures (`cmd_bind_vertex_buffers` takes equal-length buffer and offset slices;
+`cmd_draw_indexed` takes an `i32` vertex offset), the `Viewport`/`Rect2D` derives
+above, and the fact that no maintenance1 command is called -- `cmd_set_viewport` is
+core 1.0 and only the validation rule changes.
+
+### 49.6 Proof
+
+Pure: the flip's two fields and the offset it follows; the depth range carried
+unchanged; eight viewport shapes the driver rejects; the scissor's field-for-field
+lowering, the whole-attachment case, and four scissor refusals; both index types
+distinct; the count-and-first pair, including an empty range as a legal no-op; and
+two inverted ranges refused.
+
+Against the real driver: a real `VkGraphicsPipeline` is bound inside a real pass over
+a real `VkRenderPass`/`VkFramebuffer`, a real viewport and scissor are set, a real
+vertex buffer and a real index buffer are bound, and both a `vkCmdDraw` and a
+`vkCmdDrawIndexed` are recorded, submitted and reported `Complete` -- so the recorded
+draws are work the driver actually executes, on a device created through the
+maintenance1-verified path. A second test asserts the four `NoPass` refusals before
+any pass exists, and the `Draw` refusals for a zero-height viewport, a zero-width
+scissor and an inverted range once one is open, with the recording still endable
+afterwards.
+
+The three required gates pass. Because the increment creates and submits real GPU
+work, `scripts/conformance.ps1` was run as well and passes (89 cases, one adapter).
+
+Still owed by step 12: binding selection (`set_bindings`, which needs the descriptor
+sets), and then the two draw-parameter rows (`BaseVertex`, `FirstInstance`) step 11
+handed to it.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
