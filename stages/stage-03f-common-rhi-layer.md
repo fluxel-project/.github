@@ -3220,6 +3220,112 @@ pass begin/end on the recording encoder, the vertex/index/viewport/scissor and
 pipeline/binding verbs, the draws, and then the draw-parameter rows step 11 handed to
 it.
 
+## 48. W2 step 12's framebuffer and pass bracket
+
+Step 12's first owning piece landed: `native::vulkan::framebuffer`, which creates and
+owns the `VkRenderPass` and `VkFramebuffer` one admitted attachment describes, and the
+recording bracket on `command::Encoder` (`begin_raster` / `end_raster`) that begins and
+ends it. The transition to the pass's initial layout is the graph's own barrier, so the
+order a caller records is the one the frozen oracle already uses. The draw verbs remain
+owed.
+
+### 48.1 Two objects, one owner, because `Vulkan` fixes their order
+
+`vkCmdBeginRenderPass` names a render pass and a framebuffer, and a framebuffer refers to
+the render pass rather than the reverse, so the only shape that cannot be misused is one
+owner holding both. `Framebuffer`'s `Drop` destroys the framebuffer first and the render
+pass second, which is the same dependency order `PipelineLayout` states for the set
+layouts it names. The framebuffer deliberately does not own the **view**: it is a handle
+the resource table owns and must outlive the framebuffer, so the owner of both is the
+caller, exactly as the encoder's pool is.
+
+### 48.2 The two passes are comparable because they share one lowering
+
+`Vulkan` compares the render pass a raster pipeline was created against with the one a
+command buffer begins, by attachment formats, sample counts and reference layouts.
+Section 29.3 already extracted `render_pass::color_description` for the creation pass;
+this increment calls it, and `PassAttachment::color_reference`, from the recording pass,
+so only the contents operations differ -- they are what the graph compiled. Neither pass
+restates a format or a layout.
+
+### 48.3 The refusals the framebuffer owns, and the one `admit` deliberately left to it
+
+`render_pass::admit` refuses the attachment *set* (one colour at index zero, no
+depth-stencil) and explicitly leaves the subresource range to the owning half, because
+the range selects the image view rather than a field of the render pass. `Framebuffer::create`
+is that half, and it refuses:
+
+- a **subresource range** -- it is built from the texture's whole view, and a range the
+  view does not address is a different resource than the graph named. The borrowed
+  native raster path makes the same refusal, so this is a preserved semantic rather than
+  a new one;
+- an **unsupported attachment shape** -- the new pure `render_pass::framebuffer_extent`
+  refuses a layered, multi-mip, volumetric, non-2D or zero-sized description. Those are
+  `Vulkan`'s own rules for a framebuffer attachment: a three-dimensional view is not a
+  legal attachment at all, and a layered or multi-mip view names subresources a
+  non-multiview pass neither covers nor compares a pipeline against. The accepted shape
+  is exactly the target shape the borrowed raster path preserves (`D2`, one mip, one
+  layer, one depth slice);
+- a portable **format** or **sample count** this backend has not been taught, the
+  sample count lowered through `pipeline::sample_count` so there is one mapping that
+  names `Vulkan`'s counts.
+
+Every one of those is a value returned before a driver handle exists, and the one
+failure that can happen *after* the render pass exists -- a refused framebuffer --
+destroys the render pass before returning, so a refused target leaves nothing behind.
+
+### 48.4 The bracket is state, and the commands illegal inside a pass refuse
+
+`Encoder` gained one `pass_open` flag and three sentences. `end_raster` with no pass open
+is `NoPass` and a second `begin_raster` is `PassAlreadyOpen`, refused rather than treated
+as idempotent for the same reason a second `end` is. The interesting one is `PassOpen`: a
+barrier, a copy and the end of the recording are all **illegal inside a render pass**, so
+`transition_buffer`, `transition_image`, `copy_buffer`, `copy_texture` and `end` refuse
+while one is open instead of recording a command the driver would reject. That is the
+same separation the module already makes between "the encoder is not recording" and "the
+state is wrong", and it keeps the graph's recording order -- transitions, then the pass,
+then transitions -- the only one that is accepted.
+
+The bracket supplies one clear value from the framebuffer's own attachment, because
+`VkRenderPassBeginInfo` indexes one entry per attachment; the render area is the
+framebuffer's own extent, which is the fact `Vulkan` requires to agree with the
+attachments rather than a second parameter a caller could set differently.
+
+### 48.5 What it cost
+
+One compile iteration, and it is the recorded lesson about shared vocabulary types
+applied to a new place: `RasterColorAttachment::texture` is a **reference** to the id, so
+`admit`'s result had to be de-referenced before the table would look it up. Nothing else
+moved. The `ash` 0.38 source was read before the FFI, which settled the three shapes a
+first draft would have guessed: `FramebufferCreateInfo::attachments` derives
+`attachment_count` from the slice (so the count cannot disagree with the views),
+`RenderPassBeginInfo::clear_values` derives `clear_value_count` the same way, and
+`layers` is zero by default -- a value `Vulkan` rejects -- which is why it is written as
+one.
+
+### 48.6 Proof
+
+Pure: `render_pass`'s new tests pin the accepted single-layer 2D extent and each refused
+shape (layered, three-dimensional, one-dimensional, multi-mip, a depth axis that is not
+one, zero-sized); the existing admission, operation-lowering and description tests are
+unchanged.
+
+Against the real driver, in `framebuffer`'s own tests: a real colour target is transitioned
+`Undefined -> ColorAttachmentWrite`, a real `VkRenderPass` and `VkFramebuffer` are created
+from the admitted attachment, the bracket records over them, and the recording is
+submitted and reported `Complete` -- so the recorded pass is one the driver actually
+executes. The clear value is asserted from the lowered attachment, the extent from the
+texture's own description, and the two refusals that reach no driver (a layered attachment
+and a subresource range) are asserted as their own values. The bracket's state refusals
+are asserted in the same file, including that a refused call leaves the recording usable
+and still endable.
+
+The three required gates pass. Because this increment creates and submits real GPU work,
+`scripts/conformance.ps1` was run as well and passes.
+
+Still owed by step 12: the vertex/index/viewport/scissor and pipeline/binding verbs, the
+draws, and then the draw-parameter rows step 11 handed to it.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
