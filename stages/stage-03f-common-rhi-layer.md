@@ -4462,3 +4462,93 @@ public `Device` / execution wiring.
 | `webgl2/{api,state,compat}` | `gl_family/{api,state,compat}`; `compat` becomes the GL implementation of `common` (W6) |
 | `experimental/{webgl2,webgpu}` (browser closed adapters) | `webgpu/` implementing `common` (W7); the legacy WebGL2 adapter retires with the GL convergence |
 | `crates/wgpu-hal` (vendored fork) | deleted (W10) |
+
+## 60. W2 step 14's portable floor: the baseline limit check
+
+Step 14's next owed item -- "the portable baseline limit check" the route swap needs --
+landed as `native::vulkan::limits` plus one call in `open::open`. It is a pure function
+over numbers the adapter's report already carried, so no FFI was written and the
+increment compiled with one iteration, whose cause is recorded in 60.4.
+
+### 60.1 The floor is ported from the path being replaced, not invented
+
+The borrowed `wgpu-hal` path refuses an adapter that cannot serve `wgt::Limits::default()`
+with `OpenError::RequiredLimitsUnavailable` (`imp/device_open.rs::required_limits`). A fresh
+implementation that skipped that check would be **more** permissive than the one it
+replaces, which is the shape plan section 4's preserved-semantics rule exists to catch --
+and section 59.3 had already recorded the omission as deliberate-but-owed rather than
+acceptable.
+
+`limits::BASELINE` therefore carries one number per field the check reads, and every one is
+a WebGPU default `wgt::Limits::default()` states: one two-dimensional texture of 8192, eight
+colour attachments, four bind groups, both dynamic-offset alignments at 256, a 64 KiB uniform
+binding, a 128 MiB storage binding, a `[256, 256, 64]` workgroup, 256 invocations per
+workgroup and `[65535, 65535, 65535]` per dispatch dimension. The values were read from the
+`wgpu-types` 30.0.0 source rather than from its documentation, per section 23.4, and the one
+number worth pinning in its own test is the 128 MiB storage binding, because it is the
+largest literal here and a caller compares their number against it.
+
+### 60.2 The direction differs per field, and that is the whole rule
+
+Every field but two is a capacity, so the report must **reach** the floor. The two
+alignments are the exception and the reason this is not a plain `>=` fold: an alignment is a
+cost, so a *smaller* report is a better adapter and a report **above** 256 is the refusal.
+Both directions are pinned, including the accepted boundary ("reaches" is not "exceeds")
+and the better-than-floor case, because a first draft that copied one comparison shape
+across all ten fields would have been wrong in exactly one direction and would still have
+compiled.
+
+`meets` checks the fields in the order `AdapterLimits` declares them and returns the
+**first** failure, so one adapter always produces one diagnostic and a caller who fixes it
+does not meet a different one on the next attempt. The four groups are separate local
+functions because the rule is per group -- capacities are floors, alignments are ceilings --
+rather than per field.
+
+### 60.3 The check runs before `vkCreateDevice`, and the refusal keeps its field
+
+`open::open` applies it immediately after `adapter::describe` and **before** `device::open`,
+which is the same fail-closed order the validation probe uses: an adapter below the floor
+refuses with nothing created. `OpenVulkanError` gained `Baseline(BaselineError)`, and
+`rhi::open_error` maps it to the public `OpenError::RequiredLimitsUnavailable` -- the exact
+sentence the borrowed path produces for the same condition, so switching backends does not
+change what a caller sees. The failing field and both numbers stay in the native value
+rather than widening the public variant, which carries only the backend: that keeps the
+public surface unchanged, and section 59.2's rule that no variant is invented or folded into
+a neighbouring one still holds.
+
+### 60.4 What it cost
+
+One compile iteration, and it was **my test helper rather than the code**: `meets` first
+chained its four groups with `Result::or`, which keeps the first `Ok` and never reaches the
+later groups -- so the check passed every adapter as long as the capacity fields were fine.
+The failures it produced were the useful kind (eleven red tests naming exactly the fields
+that stopped being read), and the corrected shape is `?` chaining so an earlier group
+cannot swallow a later one's refusal. This is the same family as the previous increments'
+wrong-assertion notes and is recorded for the same reason: it was caught by running the
+tests, not by review.
+
+### 60.5 Proof
+
+Pure: thirteen tests cover the accepted-at-floor boundary, the 128 MiB constant pinned as a
+value, each of the ten fields lowered alone to its own named refusal with both numbers
+carried, both alignment directions (a report above the floor refused, one below accepted),
+a compute requirement that misses exactly one axis of three, an all-zero report naming the
+first capacity field, two failing fields naming the earlier one, and a bijection test that
+lowers each field in turn and asserts the resulting names are exactly the baseline's ten --
+so a field a later edit stops reading fails its own case instead of passing silently.
+`rhi` adds the mapping test: a baseline refusal is the public `RequiredLimitsUnavailable`
+with the backend named.
+
+Against the real driver, `open::open` itself is the evidence: the existing smoke tests open
+a real device through the call the check now sits in, and a new test re-runs `limits::meets`
+over the same adapter's report the successful open used, so the fact is asserted rather than
+implied by an `Ok`.
+
+The three required gates pass. The increment reads a real adapter through `open`, so
+`scripts/conformance.ps1` was run as well and passes; it creates and owns no GPU object
+beyond the device the existing smoke tests already opened, so what the GPU gate proves here
+is that the hardware fixture set is unchanged.
+
+Still owed by step 14: the route swap itself, the staging upload path, the fixed-artifact
+pipeline and binding construction over this table, validation diagnostics capture, and the
+public `Device` / execution wiring.
