@@ -2335,6 +2335,107 @@ The three required gates pass. The increment reaches real hardware, so
 Step 10 still owes present, reconfigure, and whatever reclamation a poisoned
 surface's retained semaphore can have.
 
+## 39. W2 step 10's present half: the present call and the retained wait semaphore
+
+`native::vulkan::present` (pure) and `AcquireLease::present` with the swapchain's
+retained-semaphore table (owning) land the next piece of step 10. Present consumes
+the lease cleanly, and the semaphore it waited on is retained until the
+presentation engine hands its image back. Reconfigure and the recovery of a
+poisoned surface remain owed.
+
+### 39.1 The pure half names each answer, and a suboptimal present is a present
+
+`present::outcome` lowers `ash`'s `VkResult<bool>` -- read from the `ash` 0.38
+source, where `queue_present` maps `VK_SUCCESS` to `Ok(false)` and
+`VK_SUBOPTIMAL_KHR` to `Ok(true)` -- into `PresentOutcome::{Presented,Suboptimal}`
+or one of three refusals. The distinctions are the point:
+
+- **`Suboptimal` is not a refusal.** The image reached the presentation engine and a
+  reconfigure is merely due, so the flag is carried as a value; the reconfigure
+  decision belongs to the step that owns `old_swapchain`, exactly as the acquire's
+  suboptimal flag already does.
+- **`OutOfDate` is not `SurfaceLost`.** One is fixed by rebuilding the swapchain, the
+  other by giving up on the window system's surface; a single "surface problem" would
+  erase the difference the caller has to act on.
+- **Everything else keeps the driver's own value** as `Driver(vk::Result)` rather
+  than being folded into a named case this backend has not been taught.
+
+No `p_results` array is passed. With one swapchain the call's own result carries the
+same fact -- which is what the borrowed path being replaced reads -- and the three
+`PresentInfoKHR` builder setters each overwrite `swapchain_count`, so one of each is
+also the only shape where the three lengths cannot disagree.
+
+### 39.2 The lease is consumed, and `mem::forget` is what discharges it
+
+Present hands the lease's acquire semaphore to `vkQueuePresentKHR` as its wait, so
+the semaphore is consumed by a queue operation rather than left pending. That is the
+one path that discharges the lease, and it is stated by consuming `self`: the success
+arm retains the semaphore on the swapchain and then **forgets** the lease, which is
+what keeps its `Drop` from poisoning the surface after all. The lease is not `Copy`
+and implements `Drop`, so the forget is a real suppression rather than the no-op that
+forgetting a handle would be -- the distinction section 38.4 already paid for.
+
+A refused present takes the other branch deliberately: it leaves the semaphore
+pending, so the lease's own `Drop` runs and poisons the surface. That is the
+unpresented-acquire quarantine reached through an error return, and it is the
+fail-closed direction.
+
+### 39.3 Returning from present is not proof its wait is consumed
+
+A present that happened is not free either. The semaphore `vkQueuePresentKHR` waited
+on **cannot be destroyed or recycled when the call returns**, because the
+presentation engine may still be waiting on it; the one portable proof that it is
+done with the image is `vkAcquireNextImageKHR` handing that same image index back.
+That is the inference ANGLE records for its present semaphores, and it decides the
+shape:
+
+- `Swapchain::presented` is keyed by image index: present fills the slot its image
+  names, and the next `acquire` of that image empties it, destroying the semaphore
+  there and only there.
+- `Swapchain::drop` makes the device idle first -- which completes every queue
+  operation, present included -- and only then destroys whatever slots are still
+  filled. That is exactly the borrowed path's teardown order (`vkDeviceWaitIdle`,
+  then its semaphores), and it costs the steady-state path nothing because it happens
+  only at teardown.
+
+This is the "whatever reclamation a poisoned surface's retained semaphore can have"
+that section 38 left open, reached from the other side: a *presented* semaphore has a
+portable proof, an *unpresented* one does not, which is why the quarantine stays a
+quarantine.
+
+### 39.4 What is deliberately still not here
+
+- **No reconfigure.** Present reports suboptimal and out-of-date as values; the
+  `old_swapchain` rebuild and the recovery of a poisoned surface are the rest of
+  step 10.
+- **No draw submission.** Present waits on the acquire semaphore directly because
+  nothing has consumed it yet. When the draw-and-present path lands, that submission
+  waits on it and present waits on the submission's render-finished semaphore
+  instead; the retention rule is about whichever semaphore present waited on, so it
+  does not change.
+
+### 39.5 Proof
+
+Pure tests cover the success/suboptimal pair with its flag, the
+out-of-date/surface-lost pair, the pairwise distinctness of every named refusal and
+the driver-result passthrough.
+
+Against the real driver: a real `vkQueuePresentKHR` presents an image acquired from a
+real swapchain, the outcome is success or success-plus-suboptimal, the surface is
+**not** poisoned -- which is what distinguishes present from the unpresented drop --
+and the semaphore present waited on is asserted retained in the slot its image names.
+A second acquire and present over the same swapchain then proves the surface stays
+live and that whichever image the driver returns has its retained semaphore released
+rather than reused or leaked.
+
+The increment compiled with no iteration. The `ash` 0.38 source was read before the
+FFI, which is where `queue_present`'s `VkResult<bool>` shape and the `PresentInfoKHR`
+builder setters were settled; the semaphore lifetime rule was taken from ANGLE's
+recorded present-semaphore inference rather than guessed, and the borrowed path's
+`device_wait_idle`-then-destroy teardown was read before the owned teardown was
+written. The three required gates pass, and because this increment reaches real
+hardware `scripts/conformance.ps1` was run as well and passes.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
