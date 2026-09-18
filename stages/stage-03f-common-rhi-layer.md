@@ -2941,6 +2941,105 @@ elapsed query rows, and the draw-parameter rows (`BaseVertex`, `FirstInstance`)
 that arrive with the draw verbs and the family markers that would let a caller
 require them.
 
+## 45. W2 step 11's storage-image half: the device-owned format table and the second storage row
+
+Step 11's next bounded piece landed: the device owns the per-format evidence table
+`format_facts` fills, and the `StorageImage` row is recorded from it. The row needed no new
+feature, no new device extension and no new FFI call -- `device::create` had the instance
+and the physical device in hand and simply asked the format question the ledger had been
+leaving to a caller -- which is what let it compile without an iteration.
+
+### 45.1 The row is the same stage pair beside a resource fact, and the ledger had a field for each
+
+`Vulkan` gates the write half of both storage domains by stage, so the row reuses
+`StoreFeatures::proves_storage_buffers` as its route: without the pair nothing examined the
+row, and a partial pair is not a route either, so the row stays unexamined rather than
+half-proved. The resource half is a different kind of fact -- a storage image is an image
+*in a format*, and whether a format may be used through one is what
+`vkGetPhysicalDeviceFormatProperties` reports per format -- and the ledger already has the
+field for it: `limits_satisfied`.
+
+That mapping is the design of this increment, and it is what keeps the ledger's two
+"refused" sentences different. A device created with the store pair on an adapter whose
+formats none support storage is **examined and refused** (`limits_satisfied: false`); a
+device created without the pair was never examined at all. The storage-buffer row made the
+same split with the driver's binding-size report as its floor, so the two rows are now
+structurally identical and W4 has a genuine repetition to look at rather than a second
+shape invented for the second row.
+
+`FormatTable::has_storage_read_write` is the floor's query, promoted from the GL family's
+identically-named method (`webgl2/api/formats.rs`): **both** directions, because the table
+splits read from write and neither implies the other, so a row proving one direction
+describes half the domain the capability names. Its evidence is deliberately not
+re-checked there -- `FormatTable::record` already refuses a storage fact that arrived
+without an operation probe, so a second check would be a second definition of a rule the
+table owns.
+
+### 45.2 The device owns the table, because the ledger cannot be recomputed
+
+The ledger is captured at device creation and never recomputed -- a query that re-read it
+could answer about hardware that has since been replaced -- so a format fact discovered
+after the device exists could not reach the row. The table therefore moved into the device:
+`device::create` runs `format_facts::record_mapped` and stores the result beside the
+ledger, and `VulkanDevice::formats` is what the capability lowering folds instead of a
+caller recording the same driver answers a second time.
+
+The read sits **before** `vkCreateDevice`, with the feature query but not with the device,
+which is the same fail-closed order the validation probe uses: a driver that cannot answer
+for a mapped format refuses the open with nothing created. `DeviceError::Format` is the
+sentence for it.
+
+### 45.3 What is deliberately not claimed
+
+- **No descriptor-count floor.** `max_per_stage_descriptor_storage_images` would be a third
+  input, and the row's own statement names two: the stage pair and the per-format fact.
+  Borrowing a limit the row does not read would tie it to a fact it does not depend on, the
+  same reasoning that keeps the `Copy` row's floor trivially satisfied. It joins the row
+  with the step that needs the count.
+- **No write-without-format.** `shaderStorageImageWriteWithoutFormat` is what a storage
+  image needs when the *format is not known*, and every format this row's floor proves is
+  one this backend names. Enabling it would widen the shader language for a resource the
+  vocabulary cannot describe.
+- **No compute-only shortcut.** Storing to a storage image from a compute shader is core,
+  so a device without the store pair can still store from compute; the row stays unexamined
+  there anyway, because it describes the read *and* write domain across the stages this
+  backend's recipes use -- the same call the storage-buffer row made.
+
+### 45.4 What it cost
+
+Nothing. The increment compiled with no iteration and its tests passed first run, including
+the real-adapter one, and no new FFI was written either: `format_facts::record_mapped` and
+`get_physical_device_features` were already read from the `ash` 0.38 source by the two
+increments this one follows, so section 23.4's rule was satisfied by reuse rather than by a
+new reading.
+
+### 45.5 Proof
+
+Pure tests cover: each direction of the format query alone leaving
+`has_storage_read_write` unsatisfied and a row proving both satisfying it; the device-level
+discriminating set for the row -- no store pair (unexamined), a partial pair (unexamined),
+and the pair with an empty table, with a read-only format and with a write-only format
+(examined and refused by the floor) against the pair with a both-directions format (proved,
+`NotRequired`); and the storage rows' removal from the unproved-row list, which still holds
+the six feature-gated or preserved rows.
+
+Against the real driver: the device test reads the adapter's feature report again, applies
+the same pure request, and asserts the `StorageImage` row equals that pair **and** the
+device's own table's answer -- not a re-query -- and that the table holds every format this
+backend maps. On the named board the adapter enables both store features and reports
+`STORAGE_IMAGE` for `R8G8B8A8_UNORM`, `B8G8R8A8_UNORM` and `R16G16B16A16_SFLOAT` but not
+for the sRGB sibling or `D32_SFLOAT`, so the row is proved there rather than merely
+consistent. `capability::capabilities` needed no edit for the row -- it already folds the
+table it is handed -- and the lowering's real test now takes that table from the device
+instead of recording it again, which is what "one discovery answer" means here.
+
+The three required gates pass, and because the increment queries and creates a real device
+`scripts/conformance.ps1` was run as well and passes (89 cases, one adapter).
+
+Still owed by step 11: the occlusion and elapsed query rows, and the draw-parameter rows
+(`BaseVertex`, `FirstInstance`) that arrive with the draw verbs and the family markers that
+would let a caller require them.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
