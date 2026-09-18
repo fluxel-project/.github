@@ -3853,6 +3853,101 @@ next, whose row is already proved but whose recording verbs (`begin_compute` /
 the storage-role and indirect-dispatch families after it, and then the execution-layer
 migration that lets the frozen oracle run on this backend.
 
+## 54. W2's third family wiring: `ComputeApi`, and a bracket the driver has no command for
+
+Step 13's third family landed: `native::vulkan::compute` is the pure half and
+`family::ComputeRecording` with `Provides<Compute>` is the owning half. The recording
+encoder gained the compute bracket and the four commands `ComputeApi` names, and the
+row the negotiation proves was already recorded in section 43, so no new capability
+fact was needed.
+
+### 54.1 One pass slot, and the compute bracket is the layer's own
+
+`Vulkan` has no compute-pass command: a dispatch is legal outside every render pass,
+so `begin_compute` / `end_compute` create no driver state. They are still state here,
+and the alternative was rejected deliberately. Admitting a dispatch with no bracket
+would make the family's begin/end pair two no-ops promising a boundary nothing
+enforces, and the GL family already models the other shape: one pass slot, either
+kind, and the verbs of each kind belong to their own open pass.
+
+`Encoder`'s `pass_open: bool` therefore became `pass: Option<PassKind>`, one slot
+holding either bracket. A second begin of either kind answers `PassAlreadyOpen`, whose
+doc is now kind-neutral for exactly that reason -- naming one kind would make the
+refusal wrong for the caller that needed the other. A raster verb inside a compute
+bracket and a compute verb with no bracket answer `NoPass`, and `end_compute` with
+nothing open is `NoComputePass`: the one close that names its kind, because it alone
+reaches it, and a close wants a boundary to close rather than a pass to record into.
+
+A barrier and a copy still answer `PassOpen` while either bracket is open, and `end`
+with either open is the same refusal. For the raster bracket that is `Vulkan`'s own
+rule; for the compute bracket it is the layer's, and the honest one, because the
+graph's order is transitions, then the pass, then transitions.
+
+### 54.2 The dispatch's counts are lowered by a pure module
+
+`compute::dispatch_groups` refuses a zero group dimension. The rule is the contract's
+("a zero-sized dispatch is a legal driver no-op, so one arriving here is a caller's
+mistake"), and `Vulkan` would accept the command and do nothing, which is why the
+refusal has to happen here. The whole triple is carried as `ZeroGroups([u32; 3])`
+rather than only the offending axis, because a dispatch is described by its three
+counts together. The module is pure for the reason `draw` is: an encoder cannot be
+built without a real command pool, so a rule that lived on the recorder could not be
+tested without a driver.
+
+### 54.3 The two families share the set-binding body and not the bind point
+
+`set_bindings` (raster, `GRAPHICS`) and `set_compute_bindings` (`COMPUTE`) share one
+private `bind_descriptor_sets`, and the bind point comes from the guard that just
+proved the bracket rather than from a parameter. A public bind point would let a
+caller record the other family's point at its own call site, which is precisely what
+the one-handle-type-per-family rule exists to make impossible. Recording a compute
+binding through the graphics point would otherwise produce a dispatch that reads
+nothing.
+
+### 54.4 `ComputeError` is one sentence today, and keeps its own type
+
+Every `ComputeApi` verb either takes a value the caller already holds (`&BindGroup`,
+`&ComputePipeline`) or takes none, so this family needs no id lookup and its error is
+the recording's sentence carried rather than restated. It still declares its own
+`Error` type, per section 11.9's convention: a backend that later needs a
+compute-specific refusal has a place to put it without widening another family's
+answer. No transitions are on the handle yet, and that is deliberate rather than
+missed: the bindings a compute recipe reads are the storage-role families, and the
+transitions arrive with them.
+
+### 54.5 What it cost
+
+Nothing: the increment compiled with no iteration and its tests passed first run. The
+one `ash` 0.38 fact it needed was read before the FFI, per section 23.4 --
+`cmd_dispatch(command_buffer, group_count_x, group_count_y, group_count_z)` takes the
+three counts directly -- and `PipelineBindPoint::COMPUTE` is the standard value its
+name says.
+
+### 54.6 Proof
+
+Pure tests cover the accepted non-zero triple (including `u32::MAX`, because the
+driver's maximum is not this rule's ceiling) and each axis alone plus the all-zero
+case refused with the triple carried.
+
+Against the real driver: `require::<_, Compute>(&device)` yields the handle, it reports
+the device's own stamp, the handle opens the bracket, binds a real `VkComputePipeline`
+over an empty layout, records a real `vkCmdDispatch`, closes and submits, and the
+submission reports `Complete`. The second fixture asserts the refusals: `NoPass` for
+each compute verb with no bracket, `NoComputePass` for the close, `PassAlreadyOpen` for
+a second begin, `NoPass` for a raster verb inside the compute bracket, the dispatch's
+own `ZeroGroups` sentence, `PassOpen` for a barrier and for `end` with the bracket
+open, and `NotRecording` once the handle has finished -- with the recording still
+usable and still endable after every value refusal.
+
+The three required gates pass. Because the increment creates a real device, a real
+pipeline and submits real GPU work, `scripts/conformance.ps1` was run as well and
+passes.
+
+Still owed by W2's closure: the remaining families this backend can serve -- the
+storage-role families (`StorageBuffer`, `StorageTexture`) next, since `ComputeApi`'s
+bindings are what they build, and their transitions arrive with them -- and then the
+execution-layer migration that lets the frozen oracle run on this backend.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
