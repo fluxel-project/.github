@@ -3122,6 +3122,104 @@ The three required gates pass, and because the increment's real-device test open
 a Vulkan device, `scripts/conformance.ps1` was run as well and passes (89 cases, one
 adapter).
 
+## 47. W2's raster-pass lowering: the render pass the draw verbs will begin
+
+Step 11 can no longer prove anything on its own. Its one owed item is the two
+draw-parameter rows (`BaseVertex`, `FirstInstance`), and the step's own entry says
+they arrive with the draw verbs whose parameter space they gate. Those verbs need a
+`VkRenderPass` and a `VkFramebuffer` before any `vkCmdBeginRenderPass`, so the step
+list gained **step 12 (raster recording)** and this increment landed its first
+bounded piece: `native::vulkan::render_pass`, the pure lowering of the portable
+attachment set onto the pass description the recording half will create. Step 11 is
+recorded as complete for what it can prove; the draw-parameter rows move to step 12.
+
+### 47.1 The preserved semantic is the GL family's, stated in the same shape
+
+Plan section 4: a pass admits exactly one colour attachment at index zero and no
+depth-stencil attachment. `render_pass::admit` mirrors
+`webgl2/compat/device/pass.rs::admit` exactly -- the same deconstruction of the colour
+slice, the same index check, the same depth refusal -- and the two refusals are
+separate values for the same reason the GL family keeps two messages: an attachment
+set with no colour target at index zero has no pipeline that could run in it, while a
+depth-stencil attachment names a recipe no retained artifact declares.
+
+The pipeline vocabulary can still *express* a depth-stencil attachment (step 5 lowers
+one, and its real-driver test creates such a pipeline), and that is deliberate rather
+than a contradiction: the refusal is visible at the pass, where no recipe declares
+depth, instead of being hidden by a vocabulary that could not say it at all.
+
+The subresource `range` is deliberately not decided here. It selects the image view
+the framebuffer is built from rather than a field of the render pass, so `admit`
+answers the pass question and the owning half will answer the view question.
+
+### 47.2 The one shared fact, because the driver compares the two passes
+
+`Vulkan`'s render-pass compatibility rules compare two passes by their attachment
+formats and sample counts, and the creation pass `pipeline::create_raster` builds and
+the recording pass this module describes must therefore agree. `color_description` is
+now the one place a colour attachment's description is written, and
+`pipeline::RenderPass::create` calls it for every colour attachment. Their contents
+operations differ deliberately and that is why the operation is a parameter: creation
+performs nothing and says `DONT_CARE`, while the recording pass states the operations
+the graph compiled. Both layouts are `COLOR_ATTACHMENT_OPTIMAL`, which is the layout
+`barrier::image_state` gives `ColorAttachmentWrite` (step 7), so the pass begins where
+the graph's own barrier left the image rather than at a layout stated twice.
+
+### 47.3 Why the create-info is not returned
+
+`VkRenderPassCreateInfo` borrows its attachment and subpass slices, and the
+`VkSubpassDescription` it holds borrows the colour-reference slice in turn, so a value
+containing them could not outlive the locals that hold those slices. `PassAttachment`
+therefore returns the pieces (`description`, `color_reference`, `clear_value`) and the
+owning half assembles the create-info in the one scope where the borrows are valid. A
+self-referential type would be the same borrow with an unsafe promise attached, and
+the module says so where the decision is visible.
+
+The clear payload is carried as the portable `[f32; 4]` rather than as a
+`vk::ClearValue`, because that union has no `Debug` and is built where the begin-info
+needs it. A non-clearing load writes zeroes rather than leaving the entry
+uninitialized, because `VkRenderPassBeginInfo` indexes one entry per attachment.
+
+### 47.4 What it cost
+
+One compile iteration, and it is the trap the previous increments already recorded:
+`assert_eq!` cannot compare a `Result<&RasterColorAttachment, _>`, because
+`fluxel_rendergraph::RasterColorAttachment` derives neither `PartialEq` nor `Debug` --
+the same family as the `ImageSubresourceRange`, `BufferCopy` and
+`Win32SurfaceCreateInfoKHR` notes. The refusal tests compare `.err()`.
+
+The `ash` 0.38 source was read before the lowering was written, which settled three
+shapes a first draft would have guessed: `AttachmentDescription` derives `Copy`,
+`Clone` and `Default` but **not** `PartialEq` (so the tests assert fields);
+`ClearValue` is a union deriving `Copy` and `Clone` only, with no `Debug` (which is
+why the payload is an array in `PassAttachment`); and
+`SubpassDescription::color_attachments` borrows its slice, which is exactly what makes
+returning a create-info impossible.
+
+### 47.5 Proof
+
+Twelve pure tests cover: the retained one-colour pass admitted; zero colours, a second
+colour and a colour not at index zero each refused as `ColorTargets`; a depth-stencil
+attachment refused as `DepthStencil`; the two refusals distinct; every `LoadOp` and
+`StoreOp` variant lowered to its named `Vulkan` value; a clear payload carried only by
+`Clear`; the colour reference naming slot zero; the clear value carrying the lowered
+colour; and the description's field-for-field contents -- format, samples, both
+load/store operations, both stencil operations at `DONT_CARE` and both layouts at
+`COLOR_ATTACHMENT_OPTIMAL`.
+
+The increment creates and owns no GPU object and calls no driver entry point, so the
+three required gates are its whole verification of new behavior. `scripts/conformance.ps1`
+was run as well, because it is the one gate that requires a clean committed worktree and
+therefore had to follow the commit; it passes (89 cases, one adapter). What the GPU gate
+proves for a piece that owns no GPU object is that the hardware fixture set is unchanged.
+The creation-pass refactor in 47.2 is covered by gate 3 instead, where the real-driver
+raster-pipeline tests create their render pass through `color_description`.
+
+Still owed by step 12, which is now the first unfinished step: the framebuffer and the
+pass begin/end on the recording encoder, the vertex/index/viewport/scissor and
+pipeline/binding verbs, the draws, and then the draw-parameter rows step 11 handed to
+it.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
