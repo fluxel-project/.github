@@ -4250,6 +4250,94 @@ The three required gates pass. Because the increment creates and submits real GP
 Still owed by step 13: the execution-layer migration that lets the frozen oracle run on
 this backend.
 
+## 58. W2 step 14's first piece: the composed recording
+
+The ordered list gained step 14 (the execution-layer migration), and its first bounded
+piece landed: `native::vulkan::recording` holds `Recorder`, the one recording context a
+single submission is recorded through, and the graphics, copy and compute handles are now
+thin wrappers over it. This is the composition decision step 13's module docs kept
+deferring -- "composing them into one is the execution-layer migration's decision" -- and
+it is a decision rather than an invention because the migration's first need is exactly
+it: the frozen oracle's X01 recipe names a raster pass, a compute dispatch and a copy in
+**one** graph execution, and `Vulkan` submits one command buffer per execution.
+
+### 58.1 One engine, and the third consumer is what moved it
+
+The three-state machine (lazy begin, live recording, ended handoff) and the single
+`Encoder` were already shared through a private `Recording` type inside `family.rs`; it
+moved when the copy handle became the second consumer (section 53.2). This increment is
+the third consumer arriving, and it is the one that makes the engine *composable* rather
+than per-handle: `Recorder` owns the same state machine plus the pass targets a raster
+bracket names, and exposes every command this backend records. Extracting it now rather
+than at the second consumer is what plan section 3 asks for in the other direction -- the
+abstraction is justified line by line by code that already existed three times.
+
+What each family handle keeps is exactly what the one-handle-type-per-family rule
+requires: the type that decides which verbs a caller can name, the id resolution through
+the device's table, and the family-shaped refusals (`UnknownBuffer`, `UnknownTexture`,
+`Pass`, `Target`, `UnsupportedFormat`). What it no longer keeps is a private copy of the
+recording state, so "a recorded command belongs to an open bracket" is implemented once
+and "a finished recording refuses further work" is implemented once.
+
+### 58.2 Raw handles in, one `RecordError` out
+
+Every `Recorder` verb takes a driver handle, never a base id. Id resolution is the
+*caller's* sentence -- a stale or foreign generation has no record in the table -- so the
+recorder never looks an id up and never returns a family-shaped refusal; its whole error
+surface is `RecordError`, the recorder's own taxonomy, which each handle carries into its
+family's error rather than restating. That is also why the refactor cannot change any
+observable error: the family error enums and their variants are untouched.
+
+### 58.3 The pass target is retained beside the recording
+
+A recorded `vkCmdBeginRenderPass` names its framebuffer until the commands that reference
+it complete. The targets used to live in the graphics handle that happened to call
+`begin_raster`; they now live in the `Recorder`, which is what lets a composed recording
+of several families keep exactly the objects its own command buffer names. The retained
+target count is observable as `Recorder::retained_targets`, so the lifecycle fact is
+asserted rather than assumed.
+
+The one ordering the refactor had to preserve is `begin_raster`'s: the recording is begun
+*before* the attachment set is admitted and the framebuffer built, so an allocation
+failure is still reported as the recording's sentence rather than after a target was
+created. `Recorder::ensure_recording` is that hook, and the handle calls it first.
+
+### 58.4 What it cost
+
+One wrong test *assertion*, and it is the same family the previous increments recorded:
+the fresh-recorder case asserted that a refused `finish` leaves the recorder usable.
+`finish` is a handoff, not a callback verb, and the state machine moves to `Finished`
+even when there was nothing to hand over -- the sentence is deliberately the same for
+"never recorded" and "already ended", and neither is a reason to begin a recording. The
+test now pins that instead, and a second test pins the positive path (used, ended once,
+refusing afterwards). It was found by running the new real-device test, not by review --
+the same way the option-literal and `PartialEq` mistakes of earlier increments were.
+
+### 58.5 Proof
+
+Pure: the composed test records a buffer-to-buffer copy over its two barriers, a raster
+pass with a real pipeline and a real framebuffer, a compute bracket with a real
+`VkComputePipeline` and a dispatch, ends once and submits once -- and the driver reports
+`Complete`, with the retained target still named by the recorder. Three refusal tests
+cover the composed brackets: a raster verb with no pass, a compute verb with the wrong
+bracket, a second begin of the shared slot, and both not-recording states.
+
+Against the real driver, the refactor is behaviour-preserving by construction: every
+existing family test (graphics, copy, compute, indirect) still exercises the same verbs
+through the same error sentences, and the whole `fluxel-rhi` suite is green.
+
+The three required gates pass. Because the increment creates and submits real GPU work,
+`scripts/conformance.ps1` was run as well and passes (89 cases, one adapter, evidence at
+`target/conformance/2b6854b5`).
+
+### 58.6 Still owed by step 14
+
+The RHI-facing device that opens this backend; the staging upload path, which is the
+consumer step 8 deferred `vkCmdCopyBufferToImage` / `vkCmdCopyImageToBuffer` to; the
+fixed-artifact pipeline and binding construction over this table; validation diagnostics
+capture for the oracle's "programmatically empty diagnostics" clause; and the public
+`Device` / execution wiring that lets the frozen oracle run here.
+
 ## Appendix A — capability triage recorded from the wgpu-hal GLES comparison
 
 | Capability | wgpu-hal GLES | Fluxel today (code) | Verdict | Where it belongs |
