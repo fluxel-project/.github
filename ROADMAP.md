@@ -4,22 +4,24 @@ Fluxel is a native-first, AI-friendly lightweight rendering runtime with an
 approachable scene API. This is an execution map, not a release schedule or a
 promise to create every named crate or compatibility layer.
 
-**Latest closure:** 0.14 / Stage 3D maps the fixed logical mesh/RGBA8 asset
-path to renderer-private persistent GPU residency. The released rendering
-commit is `ad37a14da5415b880c4746ce3238e83aa8ea933a`, consuming
-`fluxel-bases` v0.13.4 at `22c4eb0e199575aa71b59f3abc6ec3f72d934b9a`.
-It proves preparation-time resolution, generation-safe replacement, device
-recreation, and completion-safe retirement on the named DX12, Vulkan, WebGPU,
-and WebGL2 evidence paths; it does not add a generic loader, material, scene,
-or browser compatibility claim.
+**Latest closure:** 0.15 / Stage 3E puts desktop GL 4.x, GLES 3.x, and WebGL2
+behind one private `api -> state -> compat` GL-family boundary. The released
+rendering tag is `v0.15.0` at
+`e3134619f3ebe3130248042351acee8144d99354`. Its retained evidence proves the
+named GL4 and browser WebGL2 routes and auxiliary GLES implementation evidence;
+it explicitly does not claim a physical GLES 3.1 device result. Earlier 0.14
+renderer-residency evidence remains the logical-asset baseline.
 
-Development follows the next visible demo closure, not the layer map. Reuse
-and extend one scene and application wherever possible. Extract a crate only
-when that demo proves an independently changing ownership boundary.
+Development normally follows the next visible demo closure, not the layer map.
+The `0.16`-`0.20` foundation train is the explicit exception: reviewed RHI,
+RenderGraph, and capture/replay contracts must replace the accumulated proof
+interfaces before another high-level API is frozen.
 
-**Next execution sequence:** Stage 3E validates the smallest approachable
-Rust-native scene API over the now-proved logical asset and rendering residency
-boundaries. It must remain evidence-driven across affected supported targets.
+**Next execution sequence:** `0.16` native RHI -> `0.17` all RHI platforms ->
+`0.18` RenderGraph semantic core -> `0.19` RenderGraph execution/trace closure
+-> `0.20` portable capture/replay. Each version must close and retain its full
+ecosystem evidence before the next opens. The approachable Rust scene API is
+postponed until after `0.20`.
 
 Read [development principles](DEVELOPMENT_PRINCIPLES.md) before changing the
 roadmap or public APIs. Read the [evidence policy](EVIDENCE_POLICY.md) before
@@ -219,7 +221,8 @@ and [`fluxel-jsbridge` v0.1.0](https://github.com/fluxel-project/fluxel-jsbridge
 **2.2 release result:** the same retained black/red/green/blue scene
 has completed the named Chrome WebGPU lifecycle: stable rendering, resize,
 zero-size/restore, hidden/visible, controlled `device.destroy()` loss,
-recovery into a new device generation, and async dispose. The WebGPU path keeps
+terminal loss followed by a newly requested device identity/generation domain,
+and async dispose. Old handles never revive. The WebGPU path keeps
 canvas context, device, queue, pipeline/buffer objects, completion tickets,
 and recovery private to rendering WASM/RHI; the JS bridge owns only DOM
 lifecycle and one RAF. The release evidence records bounded `N=3`
@@ -349,8 +352,9 @@ is 65,515 bytes with SHA-256
       compatible physical transient resources across frames instead of creating
       and destroying them per frame. Graph invalidation, extent changes, and
       device loss retire the old realization only after known completion.
-- [x] Prove state, last use, accepted-unknown work, device generation,
-      recreation, and completion-driven retirement on the named backend matrix.
+- [x] Prove state, last use, accepted work awaiting terminal receipt/completion,
+      device identity/generation-domain recreation, and completion-driven
+      retirement on the named backend matrix.
 - [x] Freeze only capability facts demonstrated by those tests. Do not mirror
       a platform API or expose multi-queue policy.
 
@@ -463,7 +467,225 @@ The closed scope is renderer-private residency for fixed mesh and RGBA8 image
 assets; loader/I/O, generic material and scene APIs, and a generic residency
 manager remain future work.
 
-### Stage 3E — Approachable scene API validation
+### Stage 3E / 0.15 — GL-family boundary
+
+**Status:** Complete.
+
+One GL-family backend now covers desktop GL 4.x, GLES 3.x, and browser WebGL2
+profiles behind private `api`, `state`, and `compat` layers. It is a peer of the
+other RHI backends and does not expose a public GL-flavored graphics API. The
+closure retains named route/refusal facts and the desired/applied/unknown state
+model required by a stateful backend.
+
+**Closure:** [`fluxel-rendering` v0.15.0](https://github.com/fluxel-project/fluxel-rendering/releases/tag/v0.15.0)
+at `e3134619f3ebe3130248042351acee8144d99354`. The evidence covers the named
+desktop GL and WebGL2 paths plus auxiliary GLES evidence; a portable real-device
+GLES claim remains deliberately open.
+
+### Foundation train contract
+
+Stages 3F-3J are sequential. A later stage does not begin until the prior stage
+is released with retained ecosystem evidence. During the train, higher-level
+renderer, WASM entry, example, or fixed-recipe code may be explicitly dormant
+while its dependency is replaced, but it must not be deleted or replaced by a
+second public resource model. No advertised release may ship an advertised crate
+as commented-out code.
+
+The canonical detailed documents are maintained in `fluxel-rendering`:
+
+- [normative RHI API v1 specification](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/design-rhi.md);
+- [framework/interface contract](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/design-foundation-interfaces.md);
+- [RHI architecture](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/design-rhi.md);
+- [RenderGraph architecture](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/design-rendergraph.md);
+- [capture/replay architecture](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/design-capture-replay.md); and
+- [five-version execution plan](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/version-plan.md).
+
+The API v1 specification is the sole normative RHI API source. Architecture
+documents preserve layer ownership and the version plan preserves delivery and
+evidence gates. This roadmap is the ecosystem status authority only. A conflict
+in a public type, error, capability, command, submission, presentation, graph
+bridge, or tooling contract is resolved in favor of API v1.
+
+### Stage 3F / 0.16 — Portable RHI protocol and native backends
+
+**Status:** Planned/in progress. No completion claim exists until every gate
+below, including real Metal, is retained on one released source revision.
+
+**Boundary:** implement the frozen portable semantic API on DX12, Vulkan, and
+Metal. Capability is adapter/device/format/surface/route instance data, not
+trait presence. Every device-affine public value is validated against opaque
+device/context identity plus generation; device loss terminates that identity
+and recreation creates a new one. Browser sessions/tokens, native handles,
+barriers, fences, semaphores, native queues, descriptor heaps, and memory
+offsets do not enter the public model.
+
+**TODO**
+
+- [ ] Implement and test the complete frozen API surface: identity/error model;
+      provider, adapter, request, and device lifecycle; capability/format/route/
+      lane facts; resources, transfer, and readback; shader, binding, and
+      pipeline objects; recording and actual uses; submission, completion,
+      retirement, and presentation; logical statistics; `graph_bridge`; and
+      the reconstructability/tooling hooks required by portable capture.
+- [ ] Provider/adapter/device discovery, async request seam, adopted-context
+      seam, identity/generation, and available/required/enabled capabilities.
+- [ ] Per-format/route/artifact facts and pairwise lane dependency routes.
+      Delete real-overlap and global GPU-dependency booleans.
+- [ ] Canonical resources/views/samplers, upload/copy/readback, binding and
+      pipeline interfaces, recording, submission receipts, per-point
+      completion, presentation outcomes, loss, and retirement.
+- [ ] Provide the opaque transient allocation-requirements query needed by the
+      future graph; do not expose native heap/memory types or enable aliasing.
+- [ ] Put present mode in presentation configuration and present frame/after
+      relation in `SubmissionPlan`.
+- [ ] Define reconstructable shader artifacts and canonical object/command/
+      submission observation from the first RHI version; do not freeze a
+      capture file format here.
+- [ ] Prove tooling subscribe/drop linearization and callback restrictions;
+      lazy description of pre-existing objects/work and presentation fixtures;
+      external dependencies on GPU, ordered, and collapsed routes; builder
+      failure/Drop frame recovery; and conditional direct-MSAA fallback.
+- [ ] Replace the borrowed DX12/Vulkan implementation and add Metal without
+      weakening the frozen baseline refusals.
+- [ ] Run the shared contract suite, real Windows DX12/Vulkan evidence, and a
+      named real macOS/Metal run. Compile-only Metal cannot close the stage.
+- [ ] Prove dependency removal in every published feature combination.
+
+**Close when:** `v0.16.0` proves every P0 invariant and structured refusal in
+API v1, including multi-device misuse, loss/terminal states, declared-versus-
+actual graph coverage, presentation ownership and no-submit recovery,
+statistics, tooling linearization, complete object describability, external
+dependency routes, and conditional MSAA fallback, on all three real native
+backends. It does not claim all
+RHI platforms and does not open Graph implementation.
+
+`stages/stage-03f-common-rhi-layer.md` is a historical implementation journal,
+not an API authority. Its trait-based capability, closed-recipe, compressed-
+format, or old-facade entries are superseded where they conflict with API v1;
+no work item may be implemented from it without reconciliation.
+
+### Stage 3G / 0.17 — All RHI platforms
+
+**Boundary:** put browser WebGPU and the GL family (desktop GL, GLES, WebGL2
+profiles) behind the same RHI semantic/ownership model, migrate every affected
+consumer, and rerun native evidence on the integrated source.
+
+**TODO**
+
+- [ ] Implement WebGPU resources, bindings, commands, completion, canvas
+      identity/generation domains, terminal device loss, old-identity rejection, and
+      terminal disposal through the common RHI contract.
+- [ ] Make GL `compat` implement the same contract while `api` and `state`
+      remain backend-private; default framebuffer is `FrameAttachment`, never a
+      fake texture.
+- [ ] Preserve separate GL4/GLES/WebGL2 facts and structured refusals; never
+      emulate compute/storage on a profile that lacks them.
+- [ ] Reject deferred compressed formats through the common structured API;
+      do not predeclare unsupported P1/P2 vocabulary in the P0 surface.
+- [ ] Re-enable or minimally migrate renderer, WASM, examples, JS bridge, and
+      required Host consumers only for RHI integration proof; remove obsolete
+      parallel browser resource models but add no high-level feature.
+- [ ] Rerun final-source DX12, Vulkan, and Metal evidence plus named Chrome
+      WebGPU/WebGL2, desktop GL, and real-device GLES evidence. Emulator GLES is
+      auxiliary only.
+- [ ] Prove unsupported cells fail before context/resource/submission side
+      effects and that no public/internal resource model uses browser sessions
+      or asset tokens.
+
+**Close when:** `v0.17.0` retains one exact capability/route/lifecycle matrix
+for every declared backend/profile and every cross-repository consumer passes at
+pinned revisions. Only this closure opens RenderGraph implementation.
+The same API v1 contract, rather than a browser- or GL-specific parallel
+contract, must pass on every declared backend/profile.
+
+### Stage 3H / 0.18 — RenderGraph semantic core
+
+**Boundary:** implement graph authoring, validation, logical compilation, and
+per-frame instantiation over the closed RHI. Do not hide core correctness behind
+parallelism or alias optimization.
+Graph consumes the frozen `graph_bridge` and must neither replace nor extend
+the public RHI API.
+
+**TODO**
+
+- [ ] Typed pass-local buffer/texture/attachment handles and resolver
+      enforcement for stable Raster/Compute/Copy passes. Host remains unfrozen
+      without a real consumer.
+- [ ] Logical versions, full/partial/discard definedness, subresource/range
+      inheritance, RAW/WAR/WAW and memory dependencies.
+- [ ] Portable `initial_use`/`final_use` imports/exports, owner lease/history
+      validation, observable roots, reverse culling, and present/readback roots.
+- [ ] Target-aware immutable `CompiledGraph`, fingerprints, deterministic
+      report/visualization, per-frame `GraphInstantiation`, and explicit
+      `GraphExecutionPlan -> SubmissionPlan` lowering.
+- [ ] Query opaque allocation requirements but emit a conservative no-alias
+      plan, and use only the guaranteed serial lane in this release.
+- [ ] Run exhaustive CPU/model/TestRhi tests and common real-backend graph
+      workloads; unsupported modern paths fail before side effects.
+
+**Close when:** `v0.18.0` proves every scoped version, dependency, root,
+declaration, import/export, instantiation, and error rule deterministically.
+
+### Stage 3I / 0.19 — RenderGraph execution and trace closure
+
+**Boundary:** complete target-aware allocation/reuse/alias, lane-route
+scheduling, optional equivalent lowering optimizations, completion-aware
+readback, and a non-replay diagnostic artifact.
+
+**TODO**
+
+- [ ] Activate reuse/alias planning from the already-frozen opaque requirements;
+      implement `AliasBoundary`, realization, and mandatory no-alias fallback.
+- [ ] Prove completion-safe cross-frame reuse and same-frame aliasing through
+      success, preflight rejection, accepted pending/failed terminal state, and loss.
+- [ ] Implement pairwise lane routes and correct serial collapse without any
+      claim of hardware overlap.
+- [ ] Gate parallel recording, merge, batching, and coalescing behind
+      serial-oracle equivalence tests.
+- [ ] Publish versioned `GraphTraceArtifact`, typed diagnostics/checkpoints, and
+      native-tool correlation. It must not be accepted as replay input.
+- [ ] Implement and verify the already-frozen Graph/RHI observation and
+      reconstructability hooks; do not redefine their public semantics or
+      freeze persistent capture storage.
+
+**Close when:** `v0.19.0` passes alias/no-alias, lane/serial, trace, readback,
+and full real-backend regression gates. The scoped RenderGraph is then complete.
+
+### Stage 3J / 0.20 — Portable capture and replay
+
+**Boundary:** record and rebuild Fluxel semantics, never native commands or Rust
+layout. `PortableCommandIR` plus objects/snapshots/submission is normal replay
+truth. `FrozenGraphIR` is provenance/declared-use validation; recompilation is a
+separate comparison mode.
+This stage freezes artifact storage and ReplayRuntime behavior, not a second
+RHI API.
+
+**TODO**
+
+- [ ] Capture scopes and dependency/snapshot closure, typed IDs, canonical
+      object/command tables, mutations, resource snapshots, checkpoints, and
+      external-input fixtures/providers.
+- [ ] Shader portability classes and pipeline reconstruction without requiring
+      a backend binary.
+- [ ] Canonical submission/present/completion/retirement and negotiated
+      `Direct`, `Adapted`, or `Unsupported` replay.
+- [ ] Headless/windowed replay, command legality/hash/tolerant observations,
+      query policy, debugger inspection mode, diff, first-failure provenance,
+      and report.
+- [ ] Complete/partial/failed finalization, privacy/redaction, integrity,
+      version handling, optional signatures, and bounded untrusted parsing.
+- [ ] Prove same-backend replay on every declared profile and cross-backend
+      replay wherever shader/capability negotiation permits; prove normal replay
+      is independent of current Graph compiler output.
+
+**Close when:** `v0.20.0` ships the first proved artifact schema and retained
+capture/replay evidence. The promise is verifiable portable semantics, not
+native barrier order, physical placement, driver commands, or exact timing.
+
+### Stage 3K — Approachable scene API validation (post-0.20)
+
+**Entry gate:** Stages 3F-3J are all released and the final ecosystem
+composition passes at exact revisions.
 
 **TODO**
 
@@ -481,13 +703,10 @@ manager remain future work.
 residency across every affected supported target without exposing backend or
 resource-manager internals.
 
-A restricted compatibility capability profile may be scheduled after Stage 3B
-and before mobile only when a second concrete implementation proves shared
-limits. It must describe a capability floor, not mirror a platform API.
-The stable compiled graph's own cross-frame physical reuse is part of Stage 3B.
-Cross-graph pools, reuse between distinct logical resources, and memory
-aliasing remain separate profiling-driven optimization gates requiring virtual
-lifetime intervals, alias barriers, and completion-safe reuse.
+Deferred RHI/Graph families remain consumer- and evidence-gated. The word
+“complete” in Stages 3F-3J means their reviewed scoped contracts, not ray
+tracing, bindless, work graphs, sparse resources, multi-device, a speculative
+Host pass, or every future optimization.
 
 ## Stage 4 — Windows playable runtime
 

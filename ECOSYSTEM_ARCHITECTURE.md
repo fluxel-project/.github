@@ -10,6 +10,14 @@ boundary is demonstrated and reviewed. The repository boundary gives the
 capability a stable home so application and AI work do not put it in an
 unrelated layer.
 
+The foundation release train `0.16`-`0.20` is a deliberate prerequisite to the
+next high-level demo. It closes the portable RHI on every declared backend,
+then RenderGraph, then portable capture/replay. During that train higher-level
+renderer/scene/browser entry code may be explicitly dormant while a lower layer
+is replaced, but its ownership does not move and no second platform-specific
+resource architecture is allowed. High-level roadmap work resumes only after
+the `0.20` ecosystem gate.
+
 When an active vertical slice exposes a missing capability, it is implemented
 as the owning repository's smallest complete behavior and then consumed by that
 same slice. This prevents caller-local stand-ins without turning a single
@@ -35,6 +43,64 @@ lower layers must not import higher-level policy.
 `fluxel-jsbridge` is the default JavaScript SDK and integration layer, not the
 semantic authority. A Rust, C#, Lua, or other language SDK may use the same
 lower contracts without making JavaScript a dependency of those repositories.
+
+## Rendering foundation contract
+
+The [RHI API v1 specification](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/design-rhi.md)
+is the sole normative source for Fluxel's portable public RHI API. This
+document assigns ecosystem ownership; it does not add, rename, or relax RHI
+semantics. RenderGraph, capture/replay, renderer, backend, and stage documents
+consume that specification.
+
+The canonical execution chain is:
+
+```text
+Renderer
+  -> RenderGraph authoring
+  -> target-aware CompiledGraph
+  -> GraphInstantiation / GraphExecutionPlan
+  -> portable RHI RecordedWork / SubmissionPlan / Completion
+  -> DX12 | Vulkan | Metal | WebGPU | GL family
+```
+
+The GL family has separately evidenced desktop GL, GLES, and WebGL2 profiles,
+but remains one backend family. Browser and mini-game platforms are adapters to
+the same RHI model, not alternative public rendering architectures.
+
+Public GPU ownership is opaque device/context identity plus generation. All
+device-affine resources, views, bindings, pipelines, recorded work, completion
+points, and presentation frames are validated against it before backend
+submission. Loss terminates the identity; restoration requests a new device or
+context identity/generation and never revives old handles. `GPUDevice`,
+`WebGL2RenderingContext`, `GPUBuffer`, GL names, native handles, and reference-
+counted leases remain backend-private. Neither public APIs nor backend resource
+architecture use browser `session`/`token` concepts. The JS bridge adapts
+canvas/surface, resize, foreground/background, and loss/restore; RHI owns GPU
+resources, commands, submission, completion, and retirement.
+
+RenderGraph owns dependency/version/root/culling/lifetime/scheduling decisions.
+RHI supplies enabled device facts, pairwise lane routes, and opaque transient
+allocation requirements, then realizes the plan. A compiled graph has no native
+object but may be specific to capability and allocation profiles. Imports and
+exports use portable semantic uses, never public native resource-state enums.
+
+Capture/replay is a cross-cutting consumer of those existing semantics:
+`FrozenGraphIR` explains graph provenance, while `PortableCommandIR` plus
+objects, snapshots, and submission semantics is normal replay truth. RHI and
+Graph define canonical observation/reconstruction hooks from `0.16`; the disk
+artifact is selected and frozen only in `0.20`.
+
+The normative API, architecture contracts, and per-version evidence gates live in
+`fluxel-rendering`:
+
+- `documents/design-rhi.md`;
+- `documents/design-foundation-interfaces.md`;
+- `documents/design-rendergraph.md`;
+- `documents/design-capture-replay.md`; and
+- `documents/version-plan.md`.
+
+Architecture summaries and repository roadmaps link to, rather than duplicate
+or override, API v1.
 
 ## Adopted general-purpose dependencies
 
@@ -138,6 +204,18 @@ Status has a precise planning meaning:
 - `fluxel-rhi` owns native barriers, queues, fences, commands, submission, and
   readback. RHI realizes portable RenderGraph contracts; RenderGraph does not
   import RHI or implement native synchronization.
+- RHI guarantees one ordered serial submission lane. Optional lanes are device
+  facts with pairwise dependency routes; lane count never promises real hardware
+  overlap. Public APIs expose no barrier, fence, semaphore, queue family, heap
+  offset, or native resource state.
+- `FrameAttachment` is not a texture. Present is part of `SubmissionPlan`, while
+  present mode belongs to surface/presentation configuration. Every acquired
+  frame terminates exactly once through present, abandon, no-submit recovery,
+  target loss, or device loss.
+- RenderGraph may decide logical lifetime overlap only after consulting RHI's
+  opaque allocation requirements. RHI realizes the resulting transient plan;
+  native memory placement and alias barriers remain private, and a no-alias
+  fallback is always correct.
 - The common resource floor and modern capabilities are separate facts. A
   backend may implement the common floor without storage/compute; RenderGraph
   declares requirements and receives structured unsupported-capability results

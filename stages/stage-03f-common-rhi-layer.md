@@ -1,6 +1,14 @@
 # Stage 3F / 0.16 — One common RHI layer, five backends
 
-**Status:** Planned and confirmed. This document is the 0.16 execution contract.
+**Status:** Historical implementation journal. It is not the 0.16 API contract.
+
+**Normative precedence:** The [RHI API v1 specification](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/design-rhi.md)
+and the current [foundation version plan](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/version-plan.md)
+are authoritative. This journal records earlier investigations and increments
+only. Statements that capability domains are public Rust traits, closed
+renderer recipes define RHI API, compressed formats are P0, or an earlier
+facade/type spelling is frozen are superseded. Reconcile every work item before
+implementation.
 
 **Owning repository:** `fluxel-rendering`. `fluxel-jsbridge` participates only
 through its existing pinned browser consumers, which must build and pass before
@@ -1002,13 +1010,12 @@ The requested end state, recorded here so the plan and the work agree:
    actually delivered, and push that;
 4. **stop.** 0.18 is explicitly not in scope.
 
-Point 3 is not a formality. Three documents currently describe the old shape and
-will be wrong the moment 0.16 lands: this stage list, the RHI design
-(`documents/design-rhi.md`, which still describes the borrowed platform layer and
-the `DX12`/`Vulkan`-only `Backend` enum), and the workspace README's capability
-table. The interface contract
-(`documents/design-rhi-capability-api.md`) is the one document already written
-against the new shape.
+This paragraph is retained as historical journal context only: at the time it
+was written, several documents described the borrowed platform layer. That
+statement is no longer current. The present
+`fluxel-rendering/documents/design-rhi.md` and its ordered `rhi-design/` modules
+are the sole normative API v1 source; none of this journal's old trait, facade,
+backend-enum, compressed-format, or work-item wording may override them.
 
 ### 20.3 Honest size of the remaining work
 
@@ -4552,3 +4559,123 @@ is that the hardware fixture set is unchanged.
 Still owed by step 14: the route swap itself, the staging upload path, the fixed-artifact
 pipeline and binding construction over this table, validation diagnostics capture, and the
 public `Device` / execution wiring.
+
+## 61. W2 step 14's staging copy routes: the shared footprint, the two commands and the host write
+
+Step 8 recorded the two copy routes the `CopyApi` family owns
+(`vkCmdCopyBuffer` / `vkCmdCopyImage`) and deferred the two buffer-image routes to "the
+RHI's own staging upload and readback path ... the step that first needs them". This
+increment is that step's transfer half: `common::copy` states the texel-copy footprint,
+`native::vulkan::copy` lowers it once for both directions, `command::Encoder` gains the
+two commands, and `resource::ResourceTable::write_buffer` is the host write that feeds
+them.
+
+### 61.1 The vocabulary is W1's owed copy footprint, landed with its first consumer
+
+Section 9.1 assigns "copy footprints (`Rect`, `CopyExtent`, texel-copy layout, copy
+base)" to `common`, and sections 9.6 and 20.4 both record the rule that such vocabulary is
+landed when a consumer needs it rather than designed ahead of one. Both conditions are met
+here: the staging path is the consumer, and what it needs is exactly the piece the
+portable contract deliberately does not model. RenderGraph already owns the graph-level
+regions (`BufferCopyRegion`, `TextureCopyRegion`) and this layer consumes them; what no
+graph may name is where a buffer-image region's bytes live inside a buffer
+(`TexelCopyLayout`: byte offset, texels per row, rows per layer, each zero meaning
+"tightly packed") and where the box begins inside the image (`TexelCopyBase`: mip level
+and texel origin), together with the box's extent.
+
+The one rule is the image footprint's, and it moved into `common` rather than being
+written a second time: `check_image_region` refuses a zero extent, a mip the image does
+not have, a non-zero layer origin, a z extent that is not the single layer this execution
+model records, and a box that leaves the mip's own extent -- with the mip's z axis read as
+its depth for a volume and its array-layer count for everything else. The
+image-to-image route now calls it for each side and maps its five names onto the
+`CopyRegionError` variants it already had, so the mapping is total and no observable
+refusal changed; the buffer-image route calls it once. That is the "one place to be wrong"
+shape the barrier and draw lowerings already use, and it is what keeps a future second
+buffer-image consumer from deriving the bounds again.
+
+### 61.2 One record for two routes, because the driver's two commands take the same value
+
+`VkBufferImageCopy` is direction-agnostic: `vkCmdCopyBufferToImage` and
+`vkCmdCopyImageToBuffer` differ in which side supplies the bytes, not in the record.
+`copy::buffer_image_copy` therefore lowers one footprint to one record, and the two
+commands on the encoder differ only in the layout they name -- `TRANSFER_DST_OPTIMAL` for
+the destination image, `TRANSFER_SRC_OPTIMAL` for the source, which is exactly the layout
+pair `barrier::image_state` gives `CopyDestination` and `CopySource`. A caller that
+recorded the graph's own transition is consistent with the copy it records.
+
+The one check that is this route's own is the buffer offset: a buffer-image region's
+offset must be a four-byte multiple, so it is refused here as `Misaligned` -- through the
+same `COPY_BUFFER_ALIGNMENT` constant the buffer route enforces, because it is the same
+four bytes and a second literal could move independently. What is deliberately **not**
+checked is the byte range the layout addresses: computing it needs the format's texel
+block size, and the portable vocabulary has no compressed format until W8a, so a size
+derived here would be a second opinion about bytes the caller that created the staging
+buffer already computed. That is section 20.4's rule applied to a check rather than to a
+type.
+
+### 61.3 The host write belongs where the allocation is owned
+
+`ResourceTable::write_buffer` is the staging side of an upload, and the table is its only
+possible home: the allocation is owned there, the mapping is a property of the memory type
+`gpu-allocator` chose, and a `Drop` body has no way to reach the allocator anyway. It
+refuses two different sentences rather than writing through a mapping that cannot carry
+the write: `NotHostVisible` for a buffer that was never meant for the host (usually also
+not coherent, which is why the mapping is asked for first, so "this buffer was never for
+the host" is the sentence a device-local buffer gets), and `NotCoherent` for a
+host-visible type whose write would need a flush this path does not perform. The range is
+checked against the size the buffer was **created** with -- the number the graph's own
+check saw rather than one recovered from the driver -- with the end computed in checked
+arithmetic, so `u64::MAX` is a refusal rather than a wrapped range that passes.
+
+The mapping itself is neither taken nor given up here: `gpu-allocator` maps host-visible
+memory for the allocation's whole lifetime, so re-mapping would be a second answer about
+when the host may touch a resource.
+
+### 61.4 What it cost
+
+The increment compiled with no iteration. The two `ash` facts it needed were read from the
+0.38 source before the FFI, per section 23.4: `cmd_copy_buffer_to_image` and
+`cmd_copy_image_to_buffer` take the image layout directly and grow `region_count` from the
+slice, and `BufferImageCopy` derives `Copy, Clone, Default` but **not** `PartialEq`, so
+the ground-truth tests assert fields rather than whole values -- the same family sections
+31.4, 32.3, 35.4 and 47.4 already record. `gpu-allocator`'s own source settled the third:
+`MemoryLocation::CpuToGpu` can only select a type carrying `HOST_VISIBLE | HOST_COHERENT`,
+which is what makes the round-trip test's direct read of the mapped bytes valid without the
+invalidate a non-coherent readback would need.
+
+One design question was answered from existing code rather than from the specification and
+is worth recording, because a first draft would have got it wrong: the readback
+destination in the round-trip test is created for `MemoryPurpose::UploadStaging` rather
+than `ReadbackStaging`. That is not a slip -- `ReadbackStaging` asks for `HOST_CACHED`
+without `HOST_COHERENT`, which is the right property set for a read path that invalidates,
+and this increment's read path does not invert, so the coherent type is what makes the
+assertion sound. The real readback purpose arrives with the invalidate.
+
+### 61.5 Proof
+
+Pure: `common::copy` covers the accepted box, each refusal by its own name, the
+mip-halved bounds, the z-axis rule for a layered two-dimensional image against a volume,
+and that a tight layout and a padded one are distinguishable values. `native::vulkan::copy`
+covers the field-for-field lowering of a padded footprint, the zeroes that mean tight
+reaching the driver unchanged, the depth aspect, the misaligned offset and each
+footprint-shaped refusal by name, and that two calls over one footprint produce the same
+record -- which pins that the lowering has no direction in it.
+
+Against the real driver, `resource`'s round-trip test is the whole staging path minus its
+orchestration: a host write into a coherent staging buffer is asserted in the mapped
+memory, the staging buffer is copied into a real image and back out into a second coherent
+buffer over their transfer transitions, the submission reports `Complete`, and all 512
+bytes are read back exactly -- a non-constant pattern, so a copy that returned zeroes or a
+shifted range would fail rather than pass. `command`'s test asserts that both commands are
+work the driver executes on this machine and that a misaligned offset and an
+out-of-bounds box are refused as their own sentences while the recording stays usable and
+submits afterwards.
+
+The three required gates pass. Because the increment creates and submits real GPU work,
+`scripts/conformance.ps1` was run as well and passes.
+
+Still owed by step 14: the route swap, the rest of the staging upload path (the
+non-coherent invalidate a readback needs, and the submission that retains staging through
+completion), the fixed-artifact pipeline and binding construction over this table,
+validation diagnostics capture, and the public `Device` / execution wiring.
