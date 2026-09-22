@@ -74,14 +74,12 @@ Deliver:
 - material/shader variant selection;
 - scene-to-`FramePipeline`-to-RenderGraph construction.
 
-### 0.20 — RenderScene recording and replay
+### 0.20 — Blender-native editor and runtime loop
 
-Record and replay the complete RenderScene-driven path, including scene inputs,
-view/frame configuration, material/shader decisions, pipeline selection,
-RenderGraph inputs, portable execution evidence, and output observations.
-Replay uses the normal renderer, RenderGraph, and RHI contracts.
+Deliver the native Blender add-on/tooling path, material and scene import,
+structured diagnostics, and Fluxel viewport preview.
 
-### 0.21 — Blender-native editor and runtime loop
+### 0.21 — Preview/runtime equivalence and export
 
 Owner: `fluxel-rendering`, with a scoped Blender tooling package.
 
@@ -91,6 +89,24 @@ Deliver:
 - Blender diagnostics for unsupported nodes and shader/material failures;
 - Fluxel viewport preview through the renderer;
 - asset export, standalone Rust runtime loading, and equivalence fixtures.
+
+### 0.22 — RenderScene recording and replay
+
+Record and replay the complete RenderScene-driven path, including scene inputs,
+view/frame configuration, material/shader decisions, pipeline selection,
+RenderGraph inputs, portable execution evidence, and output observations.
+Replay uses the normal renderer, RenderGraph, and RHI contracts.
+
+### 0.23 — JavaScript API interface
+
+Expose a narrow JavaScript API over the established Rust contracts. JavaScript
+does not own GPU resources, shader semantics, material identity, or RenderScene.
+
+### 0.24 — Declarative UI and Canvas 2D
+
+Deliver a declarative Vue-like UI framework and a Canvas 2D API on top of the
+Fluxel renderer and prepared resources. Both consume the established
+RenderGraph/RHI architecture.
 
 ## Ecosystem structure
 
@@ -105,21 +121,6 @@ The dependency direction and public resource rules are defined in
 [ECOSYSTEM_ARCHITECTURE.md](ECOSYSTEM_ARCHITECTURE.md). No layer may expose a
 browser session/token model or move backend-private GPU objects into the
 public architecture.
-
-## Candidates, not active milestones
-
-The following are intentionally not on the active route:
-
-- JavaScript material mutation APIs;
-- CSS-like styling and DOM-oriented material assignment;
-- Canvas/UI frameworks and browser-first editor UX;
-- general-purpose rendering DevTools UI;
-- additional JS host integrations beyond existing compatibility needs.
-
-They require a demonstrated consumer after the Blender/material/renderer loop
-is complete. Existing browser, Canvas, UI, and JS stage documents are
-historical evidence or compatibility notes; they do not authorize new work
-against this roadmap.
 
 ## Completion rule
 

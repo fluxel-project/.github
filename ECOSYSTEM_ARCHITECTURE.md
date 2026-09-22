@@ -13,9 +13,10 @@ unrelated layer.
 The current `0.16` release is the completed RHI baseline. The next ecosystem
 route is shader assembly and material semantics, followed by the renderer
 framework, its custom pipeline SPI and two built-in pipelines, RenderScene,
-RenderScene-level recording/replay, and then native Blender editor/tooling
-integration. Browser, Canvas, UI, and JavaScript integration are candidates
-and do not determine the active product route.
+RenderScene-level recording/replay, native Blender editor/tooling integration,
+the JavaScript API, a declarative Vue-like UI framework, and Canvas 2D.
+These are planned consumers of the established contracts, not alternative
+resource architectures.
 
 When an active vertical slice exposes a missing capability, it is implemented
 as the owning repository's smallest complete behavior and then consumed by that
