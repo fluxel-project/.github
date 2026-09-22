@@ -38,25 +38,63 @@ natural place to build EXE, APK/AAB, or IPA artifacts.
 `fluxel-jsbridge` is the default JavaScript integration layer, not semantic
 authority. Other language SDKs may consume the same lower contracts.
 
-## Rendering library dependency direction
+## Rendering ownership and dependency DAG
 
-The frame path normally flows through the following layers:
+Rendering is an ownership DAG, not one universal layered arrow. The following
+views describe different relationships and must not be read as substitutes for
+one another.
+
+### Frame execution
 
 ```text
-fluxel-renderer
-        ↓
-fluxel-rendergraph
-        ↓
-fluxel-rhi
-        ↓
-private backends
+RenderScene
+    ↓
+FramePipeline
+    ↓
+RenderGraph
+    ↓
+Shader / Pipeline + Material Runtime
+    ↓
+RHI
 ```
 
-This is a frame-construction path, not the complete crate dependency graph.
-`fluxel-renderer` consumes material/shader services as well as
-`fluxel-rendergraph`; `fluxel-rendergraph` depends on `fluxel-rhi`; and material
-or shader subsystems may reuse portable RHI pipeline, binding, and shader
-contracts. A material/shader split remains a future crate-boundary decision.
+This is the normal frame-execution flow. It does not prescribe crate imports or
+require each runtime operation to be forwarded through every preceding box.
+
+### Material compilation
+
+```text
+MaterialGraph
+    ↓
+Material IR
+    ↓
+Shader System
+    ↓
+ShaderArtifact / Pipeline Requirements
+```
+
+This is a compilation and generation relationship, distinct from selecting a
+shader or pipeline and binding a material instance during frame execution.
+
+### Crate and portable-contract dependencies
+
+```mermaid
+flowchart TD
+    renderer["fluxel-renderer"] --> rendergraph["fluxel-rendergraph"]
+    renderer --> materialShader["material / shader services"]
+    rendergraph --> rhi["fluxel-rhi<br/>portable GPU contracts"]
+    materialShader --> rhi
+    renderer --> rhi
+    rhi --> backends["private backends"]
+```
+
+`fluxel-renderer` consumes material/shader services and `fluxel-rendergraph`.
+`fluxel-rendergraph` depends on `fluxel-rhi`. Renderer, RenderGraph, and
+shader/material runtime may each use RHI portable contracts directly where
+their own ownership requires it. RHI is the shared GPU foundation, not a
+layer-by-layer forwarding path; no upper layer may reach backend-private native
+APIs or synchronization objects. A material/shader split remains a future
+crate-boundary decision.
 
 `fluxel-rendergraph` owns graph-specific semantics: logical resources and
 versions, pass access declarations, dependencies, culling, scheduling, and
@@ -66,11 +104,9 @@ backend-private native API or synchronization objects.
 
 `fluxel-rhi` owns the portable GPU contract: device facts, physical resources,
 command recording, submission, completion, presentation, allocation
-realization, and private backend details. `fluxel-renderer` prepares scenes and
-GPU residency, resolves material/shader variants, selects a `FramePipeline`,
-and builds RenderGraph work. Material and shader subsystems participate in that
-frame construction without making the rendering crates a single linear
-dependency chain.
+realization, and private backend implementation. `fluxel-renderer` prepares
+scenes and GPU residency, resolves material/shader variants, selects a
+`FramePipeline`, and builds RenderGraph work.
 
 ## Library ownership
 

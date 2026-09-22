@@ -5,10 +5,12 @@
 **Normative precedence:** The [RHI API v1 specification](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/design-rhi.md)
 and the current [foundation version plan](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/version-plan.md)
 are authoritative. This journal records earlier investigations and increments
-only. Its earlier RenderGraph/RHI terminology is historical: the current stack
-is `renderer -> rendergraph -> rhi -> private backends`; RenderGraph directly
-uses RHI portable vocabulary and capability facts, and there is no
-`GraphTargetProfile` or renderer-owned Graph/RHI bridge layer. Statements that
+only. Its earlier RenderGraph/RHI terminology is historical: the current
+architecture is the ownership/dependency DAG in
+[ECOSYSTEM_ARCHITECTURE](../ECOSYSTEM_ARCHITECTURE.md), not a universal linear
+stack. Renderer, RenderGraph, and shader/material runtime may directly use RHI
+portable contracts, and there is no `GraphTargetProfile` or renderer-owned
+Graph/RHI bridge layer. Statements that
 capability domains are public Rust traits, closed renderer recipes define RHI
 API, compressed formats are P0, or an earlier facade/type spelling is frozen
 are likewise superseded. Reconcile every work item before implementation.
