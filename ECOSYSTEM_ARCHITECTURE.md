@@ -10,13 +10,12 @@ boundary is demonstrated and reviewed. The repository boundary gives the
 capability a stable home so application and AI work do not put it in an
 unrelated layer.
 
-The foundation release train `0.16`-`0.20` is a deliberate prerequisite to the
-next high-level demo. It closes the portable RHI on every declared backend,
-then RenderGraph, then portable capture/replay. During that train higher-level
-renderer/scene/browser entry code may be explicitly dormant while a lower layer
-is replaced, but its ownership does not move and no second platform-specific
-resource architecture is allowed. High-level roadmap work resumes only after
-the `0.20` ecosystem gate.
+The current `0.16` release is the completed RHI baseline. The next ecosystem
+route is shader assembly and material semantics, followed by the renderer
+framework, its custom pipeline SPI and two built-in pipelines, RenderScene,
+RenderScene-level recording/replay, and then native Blender editor/tooling
+integration. Browser, Canvas, UI, and JavaScript integration are candidates
+and do not determine the active product route.
 
 When an active vertical slice exposes a missing capability, it is implemented
 as the owning repository's smallest complete behavior and then consumed by that
