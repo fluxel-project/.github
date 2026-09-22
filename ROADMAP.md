@@ -38,22 +38,6 @@ Owner: `fluxel-rendering`.
 Entry gate: the RHI must reject incomplete finite-domain capability snapshots
 during device construction so every query on a published device is total.
 
-This plan also closes the RenderGraph/RHI ownership boundary. RenderGraph is a
-pure graph compiler and IR owner: it accepts logical import slots, descriptors,
-semantic contracts, required usage, and definedness, but never RHI objects,
-device identity or generation, completion leases, frame attachments, pipelines,
-or backend allocation services. The renderer-owned, workspace-private bridge
-projects RHI `EnabledCapabilities` into a `GraphTargetProfile` before graph
-compilation. That profile may omit facts irrelevant to compilation, but must
-never manufacture, strengthen, or reinterpret an RHI capability.
-
-At frame time, graph instantiation produces a logical execution plan. The
-private bridge binds prepared RHI resources, acquired frame attachments,
-pipelines, and bindings, validates device/generation, allowed usage,
-completion-safe lifetime, and interface compatibility, then lowers the plan to
-RHI `RecordedWork` and `SubmissionPlan`. Neither public crate may acquire a
-dependency on the other's public model.
-
 Deliver `MaterialGraph`, typed values, validation, Material IR, parameter and
 variant semantics, shader assembly, reflection, artifacts, and cache identity.
 Prove the Rust graph-to-variant route that later Blender tooling consumes.
@@ -71,9 +55,9 @@ Renderer-local identities, such as a material-instance identity, remain
 distinct from material-asset identity.
 
 Then define `FramePipeline` over those inputs, prove one Forward reference
-pipeline, and lower it through the private RenderGraph/RHI bridge. This
-prevents a pipeline SPI from being frozen before its primary consumer inputs
-exist.
+pipeline, and have it construct RenderGraph work using the RHI portable
+contract. This prevents a pipeline SPI from being frozen before its primary
+consumer inputs exist.
 
 ### Retained scene completion and reference-pipeline completion
 
@@ -108,7 +92,7 @@ Owner: `fluxel-rendering`.
 Record and replay the complete RenderScene-driven path: scene inputs,
 view/frame configuration, material/shader decisions, pipeline selection,
 RenderGraph inputs, portable execution evidence, and observations. Replay uses
-the normal renderer, bridge, RenderGraph, and RHI contracts; it is not a second
+the normal renderer, RenderGraph, and RHI contracts; it is not a second
 renderer.
 
 ### JavaScript API

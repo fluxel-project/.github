@@ -103,14 +103,16 @@ after Canvas, text, input, and host lifecycles are proven.
   prepared/imported resource; passes do not repeatedly query the asset system.
   Pending realizations become committed only after their upload completion is
   known, and old realizations retire only after their recorded last GPU use.
-- RenderGraph owns per-frame virtual resource usage, dependencies, states,
-  barriers, and last-use facts. Graph-transient resources are not assets.
-  Repeated execution of one stable compiled graph should reuse its compatible
-  physical realization after GPU-safe completion. Cross-graph pooling, reuse
-  between distinct logical resources, and memory aliasing require their own
-  measured workload and explicit alias-safety model.
-- RHI owns physical creation, reuse, and destruction. A graph resource reaching
-  logical end-of-life does not imply a physical create/drop cycle each frame.
+- RenderGraph owns per-frame logical resource versions and usage, dependencies,
+  definedness, culling, scheduling, and lifetime analysis. It uses RHI portable
+  resource, command, and capability vocabulary directly; graph code never
+  accesses backend-private native API. Graph-transient resources are not assets.
+  Cross-graph pooling, reuse between distinct logical resources, and memory
+  aliasing require their own measured workload and explicit alias-safety model.
+- RHI owns physical allocation requirements and realization, creation, reuse,
+  destruction, and backend-specific aliasing or synchronization. A graph
+  resource reaching logical end-of-life does not imply a physical create/drop
+  cycle each frame.
 - Capability floors are explicit. Common raster/resource behavior must not
   acquire storage or compute semantics merely because modern backends provide
   them; unsupported requirements fail with a structured capability result.

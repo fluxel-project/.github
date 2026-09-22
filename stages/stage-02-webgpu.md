@@ -27,9 +27,9 @@ objects. Dependency direction remains `fluxel-jsbridge -> fluxel-rendering`.
   order, and the one black-clear/store raster pass. WebGPU consumes the same
   compiled graph semantics as native and WebGL2; it does not create a web-only
   scene or graph compiler.
-- Renderer exposes only the closed two-format presentation profile
+- The RHI exposes only the proved two-format presentation capability
   (`Rgba8Unorm` or `Bgra8Unorm`) with fixed opaque-alpha/render-attachment
-  facts. RHI/browser format mapping is exhaustive and fails closed.
+  facts. Browser format mapping is exhaustive and fails closed.
 - The wasm-private RHI owns the canvas context, adapter, device, queue,
   pipelines, buffers, current texture/view, tickets, observers, diagnostics,
   and recovery. No GPU object or Promise becomes a public RenderGraph,
@@ -49,8 +49,8 @@ objects. Dependency direction remains `fluxel-jsbridge -> fluxel-rendering`.
 
 ## 0.10 TODO
 
-- [x] Compile the shared retained graph against the closed WebGPU presentation
-  profile without changing native or WebGL2 graph meaning.
+- [x] Compile the shared retained graph against the RHI-reported WebGPU
+  presentation capability without changing native or WebGL2 graph meaning.
 - [x] Keep WebGPU device/canvas objects and async observer/ticket lifetime
   private to wasm RHI; bound frames in flight and report normal backpressure.
 - [x] Provide same-canvas resize/zero-size/visibility behavior, controlled

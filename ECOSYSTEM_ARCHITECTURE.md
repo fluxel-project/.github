@@ -38,29 +38,33 @@ natural place to build EXE, APK/AAB, or IPA artifacts.
 `fluxel-jsbridge` is the default JavaScript integration layer, not semantic
 authority. Other language SDKs may consume the same lower contracts.
 
-## RenderGraph/RHI bridge ownership
+## Rendering library dependency direction
 
-`fluxel-rendergraph` is a pure graph compiler and IR owner. `fluxel-rhi` is a
-pure portable GPU-execution owner. Neither crate depends on, implements, or
-defines the other's public model.
+The rendering stack has one direct dependency path:
 
-Before compilation, the renderer-owned, workspace-private bridge projects RHI
-`EnabledCapabilities` into `GraphTargetProfile`. It is the only capability
-translation: the profile may omit facts irrelevant to graph compilation, but
-must never manufacture, strengthen, or reinterpret an RHI capability.
+```text
+fluxel-renderer
+        ↓
+fluxel-rendergraph
+        ↓
+fluxel-rhi
+        ↓
+private backends
+```
 
-RenderGraph accepts logical import slots, descriptors, semantic contracts,
-required usage, and definedness. It never accepts RHI resources, device
-identity or generation, completion leases, frame attachments, live pipelines,
-or backend allocation services. At frame time, the private bridge validates
-prepared RHI bindings against the graph plan (including device/generation,
-allowed usage, completion-safe lifetime, and pipeline-interface compatibility)
-and lowers the plan to RHI `RecordedWork` and `SubmissionPlan`. It may be a
-workspace-private bridge crate or module, but is not a new public architecture
-layer. `fluxel-renderer` is its first consumer. RenderGraph retains graph
-dependencies, scheduling, and virtual-resource decisions, while RHI retains
-device facts, resource realization, recording, submission, completion,
-presentation, and backend details.
+`fluxel-rendergraph` owns graph-specific semantics: logical resources and
+versions, pass access declarations, dependencies, culling, scheduling, and
+logical lifetimes. It directly uses the portable RHI vocabulary and capability
+facts required for graph compilation and recording. It never touches
+backend-private native API or synchronization objects.
+
+`fluxel-rhi` owns the portable GPU contract: device facts, physical resources,
+command recording, submission, completion, presentation, allocation
+realization, and private backend details. `fluxel-renderer` prepares scenes and
+GPU residency, resolves material/shader variants, selects a `FramePipeline`,
+and builds RenderGraph work. Material and shader subsystems participate in that
+frame construction and may use RHI portable pipeline, binding, and shader
+contracts.
 
 ## Library ownership
 
@@ -77,7 +81,7 @@ Status is structural, not a promise of scope:
 | `fluxel-image` | `fluxel-bases` | Unscheduled | Owned pixel data and portable image codecs |
 | `fluxel-rhi` | `fluxel-rendering` | Existing | Portable GPU resources, recording, submission, completion, presentation, and backend realization |
 | `fluxel-rendergraph` | `fluxel-rendering` | Existing | Graph IR, pass/resource dependencies, validation, scheduling, and virtual-resource lifetime |
-| `fluxel-renderer` | `fluxel-rendering` | Existing | Renderer integration, prepared rendering data, and the private RenderGraph/RHI bridge |
+| `fluxel-renderer` | `fluxel-rendering` | Existing | RenderScene preparation, FramePipeline SPI, visibility/culling/sorting, material and draw preparation, and rendering integration |
 | rendering asset residency | `fluxel-rendering` | Existing internal boundary | Persistent GPU realization keyed by logical asset and device generation, upload, recreation, last-use tracking, and retirement |
 | `fluxel-shader` | `fluxel-rendering` | Candidate | Shader assembly, reflection, variants, artifacts, and caching, extracted only when its authorized vertical slice proves the boundary |
 | `fluxel-canvas` | `fluxel-rendering` | Candidate | Canvas 2D and minimal text after its authorized slice |
