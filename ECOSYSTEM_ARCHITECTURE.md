@@ -40,7 +40,7 @@ authority. Other language SDKs may consume the same lower contracts.
 
 ## Rendering library dependency direction
 
-The rendering stack has one direct dependency path:
+The frame path normally flows through the following layers:
 
 ```text
 fluxel-renderer
@@ -51,6 +51,12 @@ fluxel-rhi
         ↓
 private backends
 ```
+
+This is a frame-construction path, not the complete crate dependency graph.
+`fluxel-renderer` consumes material/shader services as well as
+`fluxel-rendergraph`; `fluxel-rendergraph` depends on `fluxel-rhi`; and material
+or shader subsystems may reuse portable RHI pipeline, binding, and shader
+contracts. A material/shader split remains a future crate-boundary decision.
 
 `fluxel-rendergraph` owns graph-specific semantics: logical resources and
 versions, pass access declarations, dependencies, culling, scheduling, and
@@ -63,8 +69,8 @@ command recording, submission, completion, presentation, allocation
 realization, and private backend details. `fluxel-renderer` prepares scenes and
 GPU residency, resolves material/shader variants, selects a `FramePipeline`,
 and builds RenderGraph work. Material and shader subsystems participate in that
-frame construction and may use RHI portable pipeline, binding, and shader
-contracts.
+frame construction without making the rendering crates a single linear
+dependency chain.
 
 ## Library ownership
 
