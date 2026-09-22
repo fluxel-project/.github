@@ -1,33 +1,33 @@
 # Fluxel Roadmap
 
-Fluxel is a Rust-first rendering framework with Blender as its primary
-authoring environment. This roadmap is the ecosystem delivery authority;
-repository documents define detailed contracts.
+This is the single source of truth for Fluxel version order, authorized work,
+and delivery sequencing. Repository documents define the public contract and
+implementation detail for work authorized here; READMEs summarize current
+status and must not create a competing roadmap.
 
-## Current direction
-
-```text
-RHI -> RenderGraph -> shader assembly/materials -> renderer framework
-     -> custom pipeline SPI + Forward + Deferred
-     -> native Blender editor/tooling -> preview/export/runtime equivalence
-```
-
-The immediate feature priority after the completed `0.16` RHI baseline is
-shader assembly and the material system. Rust owns the semantics; Blender provides the editing
-experience. The target is Blender-authored material == Fluxel runtime material,
-not compatibility with EEVEE, Cycles, or a JavaScript rendering model.
-
-## Completed 0.16 baseline
-
-The current `0.16` release is the completed RHI baseline:
+The completed `0.16` release establishes the portable RHI baseline. The
+remaining sequence is deliberately consumer-first where a public SPI needs its
+input model before it can be frozen.
 
 ```text
-0.16  completed portable RHI protocol and backend baseline
+0.17 shader/material semantics
+  -> 0.18 minimal RenderScene/RenderView + FramePipeline SPI
+  -> 0.19 retained scene completion + reference pipelines
+  -> 0.20 Blender tooling
+  -> 0.21 preview/runtime equivalence and export
+  -> 0.22 capture/replay
+  -> 0.23 JavaScript API
+  -> 0.24 Canvas 2D and minimal text
+  -> 0.25 declarative UI
 ```
 
-These versions establish device/context identity, generation, resource,
-submission, completion, and graph contracts. WebGPU, WebGL2, and other
-platforms are backend evidence for the same RHI, not separate architectures.
+## Completed baseline
+
+### 0.16 — Portable RHI baseline
+
+Completed. The RHI provides portable resource, recording, submission,
+completion, presentation, loss, and capability contracts. Backends are
+evidence for this one model, not separate public architectures.
 
 ## Product train
 
@@ -35,96 +35,88 @@ platforms are backend evidence for the same RHI, not separate architectures.
 
 Owner: `fluxel-rendering`.
 
-Deliver:
+Entry gate: the RHI must reject incomplete finite-domain capability snapshots
+during device construction so every query on a published device is total. The
+renderer-owned, workspace-private RenderGraph/RHI bridge ownership is frozen;
+neither public crate may acquire a dependency on the other.
 
-- `MaterialGraph`, typed values, validation, and `Material IR`;
-- dynamic/static parameters and `MaterialAsset`/`MaterialInstance`;
-- shader modules, pass templates, interface composition, reflection, variant
-  keys, artifacts, and cache identity;
-- a Rust graph-to-variant proof;
-- a Rust-only graph-to-variant proof producing the same semantic contract that
-  Blender will consume later.
+Deliver `MaterialGraph`, typed values, validation, Material IR, parameter and
+variant semantics, shader assembly, reflection, artifacts, and cache identity.
+Prove the Rust graph-to-variant route that later Blender tooling consumes.
+Blender nodes are an input format, never the public semantic model.
 
-Blender nodes are an input format, not the public semantic model.
-
-### 0.18 — RenderGraph and renderer framework
+### 0.18 — Minimal scene inputs and FramePipeline SPI
 
 Owner: `fluxel-rendering`.
 
-Deliver:
+First freeze the smallest `RenderScene`, `RenderObject`, and `RenderView`
+input model. Then define `FramePipeline` over those inputs, prove one Forward
+reference pipeline, and lower it through the RenderGraph/RHI bridge. This
+prevents a pipeline SPI from being frozen before its primary consumer inputs
+exist.
 
-- a custom `FramePipeline` SPI;
-- built-in Forward and Deferred pipelines;
-- RenderGraph lowering and evidence that all routes consume the same material
-  and shader contracts.
-
-The full retained scene model is defined in `0.19`.
-
-The built-in pipelines are reference pipelines, not competing material
-implementations.
-
-### 0.19 — RenderScene
+### 0.19 — Retained RenderScene and reference-pipeline completion
 
 Owner: `fluxel-rendering`.
 
-Deliver:
-
-- `RenderScene`, `RenderObject`, and `RenderView`;
-- culling, deterministic ordering, visibility, and frame preparation;
-- material/shader variant selection;
-- scene-to-`FramePipeline`-to-RenderGraph construction.
+Complete retained scene updates, culling, deterministic ordering, visibility,
+frame preparation, and material/shader variant selection. Finish the Forward
+reference pipeline, then add Deferred as an independent second implementation
+of the SPI. Neither reference pipeline owns separate material semantics.
 
 ### 0.20 — Blender-native editor and runtime loop
 
-Deliver the native Blender add-on/tooling path, material and scene import,
-structured diagnostics, and Fluxel viewport preview.
+Owner: `fluxel-rendering`, with scoped Blender tooling.
+
+Deliver the native Blender add-on/tooling path, Blender node-tree to
+`MaterialGraph` translation, material and scene import, structured diagnostics,
+and Fluxel viewport preview. Unsupported nodes and shader/material failures
+must be explicit diagnostics.
 
 ### 0.21 — Preview/runtime equivalence and export
 
-Owner: `fluxel-rendering`, with a scoped Blender tooling package.
+Owner: `fluxel-rendering`, with scoped Blender tooling.
 
-Deliver:
-
-- native Blender add-on/tooling for material and scene translation;
-- Blender diagnostics for unsupported nodes and shader/material failures;
-- Fluxel viewport preview through the renderer;
-- asset export, standalone Rust runtime loading, and equivalence fixtures.
+Deliver asset export, standalone Rust runtime loading, equivalence fixtures,
+and evidence that the preview and exported runtime consume the same established
+material, scene, renderer, RenderGraph, and RHI contracts.
 
 ### 0.22 — RenderScene recording and replay
 
-Record and replay the complete RenderScene-driven path, including scene inputs,
+Owner: `fluxel-rendering`.
+
+Record and replay the complete RenderScene-driven path: scene inputs,
 view/frame configuration, material/shader decisions, pipeline selection,
-RenderGraph inputs, portable execution evidence, and output observations.
-Replay uses the normal renderer, RenderGraph, and RHI contracts.
+RenderGraph inputs, portable execution evidence, and observations. Replay uses
+the normal renderer, bridge, RenderGraph, and RHI contracts; it is not a second
+renderer.
 
 ### 0.23 — JavaScript API interface
 
-Expose a narrow JavaScript API over the established Rust contracts. JavaScript
-does not own GPU resources, shader semantics, material identity, or RenderScene.
+Owner: `fluxel-jsbridge`.
 
-### 0.24 — Declarative UI and Canvas 2D
+Expose a narrow JavaScript API over established Rust contracts. JavaScript does
+not own GPU resources, shader semantics, material identity, or RenderScene.
 
-Deliver a declarative Vue-like UI framework and a Canvas 2D API on top of the
-Fluxel renderer and prepared resources. Both consume the established
-RenderGraph/RHI architecture.
+### 0.24 — Canvas 2D and minimal text
 
-## Ecosystem structure
+Owner: `fluxel-rendering`.
 
-```text
-fluxel-bases       shared platform-neutral mechanisms when proven reusable
-fluxel-rendering   RHI, RenderGraph, shader/material, renderer, Blender tools
-fluxel-host        native host lifecycle and application integration
-fluxel-jsbridge    JavaScript/browser/mini-game adapters when concretely needed
-```
+Deliver Canvas-style 2D drawing and deliberately minimal text on prepared
+resources and the established RenderGraph/RHI architecture. This is the input
+layer for UI, not a DOM/CSS compatibility surface.
 
-The dependency direction and public resource rules are defined in
-[ECOSYSTEM_ARCHITECTURE.md](ECOSYSTEM_ARCHITECTURE.md). No layer may expose a
-browser session/token model or move backend-private GPU objects into the
-public architecture.
+### 0.25 — Declarative UI
 
-## Completion rule
+Owner: `fluxel-rendering`.
+
+Deliver a purpose-built declarative UI on the proved Canvas, text, input, and
+host lifecycle foundations. It is not a Vue, DOM, CSS, or third-party UI
+compatibility layer.
+
+## Cross-cutting completion rule
 
 Every milestone requires implementation, structured refusal behavior, unit and
 contract tests, relevant backend evidence, and an end-to-end ecosystem proof.
-One green library test cannot close a cross-repository milestone. Detailed
-evidence requirements remain in [EVIDENCE_POLICY.md](EVIDENCE_POLICY.md).
+One green library test cannot close a cross-repository milestone. See
+[EVIDENCE_POLICY.md](EVIDENCE_POLICY.md).

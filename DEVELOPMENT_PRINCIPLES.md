@@ -76,7 +76,9 @@ after Canvas, text, input, and host lifecycles are proven.
 - `fluxel-host` owns native platform lifecycle and implementations for window
   and surface handling, input and time acquisition, filesystem, storage,
   networking, audio, video, native diagnostic sinks, and executable packaging.
-  It may depend on rendering and bases; neither may depend on host.
+  Its reusable platform crates may depend on bases but not rendering. The host
+  repository's runtime/executable-composition layer may depend on those crates
+  and rendering; neither bases nor rendering may depend on host.
 - A host window supplies standard window/display handles; rendering may accept
   those traits from Host or another standards-compatible provider but never
   imports Host. RHI owns the native surface, swapchain, presentation, and GPU
@@ -116,13 +118,16 @@ after Canvas, text, input, and host lifecycles are proven.
 
 ## Documentation and cross-repository truth
 
-- Organization `ROADMAP.md` is authoritative for stage authorization and the
-  supported-target ledger. An owning repository is authoritative for its
-  public contract and recommended usage. The integration artifact owner is
+- Organization `ROADMAP.md` is the single authority for version order and
+  stage authorization. An owning repository is authoritative for its public
+  contract and recommended usage. The integration artifact owner is
   authoritative for its scripts and locks; a Release manifest is authoritative
   for exact commits, targets, commands, and retained evidence.
 - Repository READMEs summarize current capability and link to those sources;
   they do not copy the full stage history or become a competing roadmap.
+- `ECOSYSTEM_ARCHITECTURE.md` assigns ownership and dependency direction only.
+  It does not restate version plans or define RHI, RenderGraph, or renderer API
+  semantics.
 - A producer contract change must build and test every affected pinned
   consumer before merge. A cross-repository Release manifest records all
   participating commits/tags, lockfiles, capability facts, and evidence.
