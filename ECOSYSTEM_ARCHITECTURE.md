@@ -17,14 +17,16 @@ flowchart TD
     rendering["fluxel-rendering\nportable GPU and rendering libraries"]
     platform["fluxel-host platform crates\nwindowing and native services"]
     runtime["fluxel-host runtime / executable composition"]
-    js["fluxel-jsbridge\nSDK and platform adapters"]
+    browser["fluxel-jsbridge browser / minigame adapters"]
+    nativeJs["fluxel-jsbridge native JS adapter"]
 
     rendering --> bases
     platform --> bases
     runtime --> platform
     runtime --> rendering
-    js --> rendering
-    js --> platform
+    browser --> rendering
+    nativeJs --> rendering
+    nativeJs -. "native adapter only" .-> runtime
 ```
 
 `fluxel-bases` is the dependency leaf: it never imports rendering, host, SDK,
@@ -36,7 +38,10 @@ making a platform abstraction depend on GPU rendering while retaining one
 natural place to build EXE, APK/AAB, or IPA artifacts.
 
 `fluxel-jsbridge` is the default JavaScript integration layer, not semantic
-authority. Other language SDKs may consume the same lower contracts.
+authority. Browser and mini-game adapters consume rendering bindings directly
+and do not depend on the native host. Only a native JavaScript adapter may
+optionally compose with the host runtime through native-host bridge contracts.
+Other language SDKs may consume the same lower contracts.
 
 ## Rendering ownership and dependency DAG
 
@@ -121,11 +126,12 @@ Status is structural, not a promise of scope:
 | `fluxel-assets` | `fluxel-bases` | Existing | Logical asset identity, typed handles, generations, CPU-side state, reuse, and budgets; never GPU residency or I/O policy |
 | `fluxel-base`, `fluxel-diagnostics`, `fluxel-loader`, `fluxel-time`, `fluxel-input` | `fluxel-bases` | Candidate | Shared utilities, diagnostics, loading orchestration, and portable time/input contracts when a vertical slice proves each boundary |
 | `fluxel-image` | `fluxel-bases` | Unscheduled | Owned pixel data and portable image codecs |
-| `fluxel-rhi` | `fluxel-rendering` | Existing | Portable GPU resources, recording, submission, completion, presentation, and backend realization |
+| `fluxel-rhi` | `fluxel-rendering` | Existing | Portable GPU resources, shader/pipeline object creation, recording, submission, completion, presentation, and backend realization |
 | `fluxel-rendergraph` | `fluxel-rendering` | Existing | Graph IR, pass/resource dependencies, validation, scheduling, and virtual-resource lifetime |
 | `fluxel-renderer` | `fluxel-rendering` | Existing | RenderScene preparation, FramePipeline SPI, visibility/culling/sorting, material and draw preparation, and rendering integration |
 | rendering asset residency | `fluxel-rendering` | Existing internal boundary | Persistent GPU realization keyed by logical asset and device generation, upload, recreation, last-use tracking, and retirement |
-| `fluxel-shader` | `fluxel-rendering` | Candidate | Shader assembly, reflection, variants, artifacts, and caching, extracted only when its authorized vertical slice proves the boundary |
+| `fluxel-material` | `fluxel-rendering` | Candidate | `MaterialGraph`, Material IR, `MaterialDomain`, parameter/resource schema, material-asset semantics, and graph-to-IR lowering |
+| `fluxel-shader` | `fluxel-rendering` | Candidate | Shader composition, reflection, variants, `ShaderArtifact`, `ShaderInterface`, pipeline requirements, and cache identity, extracted only when its authorized vertical slice proves the boundary |
 | `fluxel-canvas` | `fluxel-rendering` | Candidate | Canvas 2D and minimal text after its authorized slice |
 | `fluxel-ui` | `fluxel-rendering` | Candidate | Purpose-built declarative UI after Canvas, text, input, and lifecycle evidence |
 | `fluxel-rendering-abi` | `fluxel-rendering` | Unscheduled | Stable native binary packaging boundary |
@@ -134,6 +140,7 @@ Status is structural, not a promise of scope:
 | `fluxel-fs`, `fluxel-storage`, `fluxel-net`, `fluxel-audio`, `fluxel-video`, `fluxel-native-time`, `fluxel-native-input`, `fluxel-diagnostic-sinks` | `fluxel-host` | Unscheduled | Native platform services, extracted only for a demonstrated reusable consumer |
 | `fluxel-vm-js`, `fluxel-native-bridge` | `fluxel-host` | Unscheduled | Native language-runtime integration |
 | host runtime / executable composition | `fluxel-host` | Existing internal boundary | Composition of platform crates and rendering into native deliverables |
+| host-to-RHI integration adapter | `fluxel-host` runtime / executable composition | Existing internal boundary | Consumes host display/window handles and produces opaque RHI `PresentationTarget`s while retaining the host object for the configured-surface lease; it does not warrant a fifth repository |
 | `fluxel-adapter-browser` | `fluxel-jsbridge` | Existing | Browser APIs, WASM loading, lifecycle adaptation, and browser diagnostics |
 | `fluxel-js-sdk`, `fluxel-adapter-minigame` | `fluxel-jsbridge` | Candidate | Public JavaScript API and selected mini-game adaptation; SDK core extraction requires an established Rust contract and one real adapter, not a fixed adapter count |
 | `fluxel-adapter-native` | `fluxel-jsbridge` | Unscheduled | JavaScript adaptation over native-host bridge contracts |
@@ -144,13 +151,19 @@ Status is structural, not a promise of scope:
   GPU realization. Host and JS bridge own platform acquisition and sinks.
 - RenderGraph transient resources are not assets. Persistent GPU residency is
   not a base asset system. These are separate lifetime domains.
-- A host window supplies standard display/window handles. RHI creates and owns
-  the native surface, swapchain, presentation, GPU synchronization, and GPU
-  lifetime derived from those handles.
+- Native host-to-RHI integration is owned by `fluxel-host` runtime / executable
+  composition: it consumes host display/window handles and produces opaque RHI
+  `PresentationTarget`s while retaining the host object for the configured
+  surface lease. RHI owns the target's portable configuration, acquired-frame,
+  native-surface, swapchain, presentation, GPU synchronization, and GPU
+  lifetime semantics. Browser-to-rendering integration is owned by
+  `fluxel-jsbridge` browser adapters.
 - Host platform crates do not import rendering. Only host runtime composition
   may link or load rendering.
-- JS adapters may translate canvas/surface lifecycle, resize, and loss/restore,
-  but do not expose or own backend-private GPU objects.
+- Browser and mini-game JS adapters may translate canvas/surface lifecycle,
+  resize, and loss/restore without a host dependency; a native JS adapter may
+  use native-host bridge contracts. No JS adapter exposes or owns
+  backend-private GPU objects.
 - Canvas and UI consume prepared rendering resources; they do not introduce
   DOM, CSS, or third-party compatibility contracts.
 
