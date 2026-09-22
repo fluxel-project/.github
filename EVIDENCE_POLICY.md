@@ -1,8 +1,8 @@
 # Fluxel Evidence Policy
 
 This policy defines what a development claim proves. It does not prescribe a
-roadmap stage or replace focused repository test instructions. `ROADMAP.md` is
-the authority for version order and stage authorization; repository contracts
+roadmap milestone or replace focused repository test instructions. `ROADMAP.md`
+is the authority for plan order and milestone authorization; repository contracts
 define the behavior being evidenced; release manifests retain the exact
 commit/target/command evidence.
 

@@ -85,7 +85,9 @@ after Canvas, text, input, and host lifecycles are proven.
   synchronization derived from the handle.
 - `fluxel-jsbridge` owns the default JavaScript SDK plus browser, mini-game, and
   native adapters. It composes lower contracts for developers without becoming
-  their semantic authority.
+  their semantic authority. Extract an SDK core only when an established Rust
+  contract and one real adapter prove a stable language-level boundary; later
+  adapters must not force platform-specific behavior into that core.
 - Shared assets and logs remain split by responsibility: bases owns asset
   identity and diagnostic records; rendering owns GPU residency; host and JS
   adapters own platform reads and diagnostic sinks.
@@ -118,15 +120,15 @@ after Canvas, text, input, and host lifecycles are proven.
 
 ## Documentation and cross-repository truth
 
-- Organization `ROADMAP.md` is the single authority for version order and
-  stage authorization. An owning repository is authoritative for its public
+- Organization `ROADMAP.md` is the single authority for plan order and
+  milestone authorization. An owning repository is authoritative for its public
   contract and recommended usage. The integration artifact owner is
   authoritative for its scripts and locks; a Release manifest is authoritative
   for exact commits, targets, commands, and retained evidence.
 - Repository READMEs summarize current capability and link to those sources;
   they do not copy the full stage history or become a competing roadmap.
 - `ECOSYSTEM_ARCHITECTURE.md` assigns ownership and dependency direction only.
-  It does not restate version plans or define RHI, RenderGraph, or renderer API
+  It does not restate plan sequencing or define RHI, RenderGraph, or renderer API
   semantics.
 - A producer contract change must build and test every affected pinned
   consumer before merge. A cross-repository Release manifest records all
@@ -153,13 +155,13 @@ after Canvas, text, input, and host lifecycles are proven.
 
 ## Delivery discipline
 
-- Advance one coherent release series at a time: plan, continuous implementation
+- Advance one coherent plan milestone at a time: plan, continuous implementation
   of its internal work packages, concentrated verification, one independent
-  review, and one retained release-evidence closure.
-- Roadmap stages state a boundary, the work now authorized, and the condition
-  that closes the stage. Later stages intentionally become coarser; they guide
-  direction but do not authorize implementation or API expansion before their
-  own boundary and close conditions are refined.
+  review, and one retained evidence closure.
+- Roadmap milestones state a boundary, the work now authorized, and the
+  condition that closes the milestone. Later milestones intentionally become
+  coarser; they guide direction but do not authorize implementation or API
+  expansion before their own boundary and close conditions are refined.
 - Do not skip an earlier closure because a later API is easier to design. Reduce
   the current scope when its full gate cannot yet be proved.
 - An explicitly independent target gate may remain open while work with no

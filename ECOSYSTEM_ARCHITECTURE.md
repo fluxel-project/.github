@@ -1,7 +1,7 @@
 # Fluxel Ecosystem Architecture
 
 This document defines repository, crate, and dependency ownership. It does not
-define API semantics, version order, or delivery status: those belong to the
+define API semantics, plan order, or delivery status: those belong to the
 owning repository's contract documents and [ROADMAP.md](ROADMAP.md),
 respectively.
 
@@ -44,14 +44,23 @@ authority. Other language SDKs may consume the same lower contracts.
 pure portable GPU-execution owner. Neither crate depends on, implements, or
 defines the other's public model.
 
-The lowering from `GraphExecutionPlan` to RHI `RecordedWork` and
-`SubmissionPlan` is owned by `fluxel-rendering`'s renderer integration layer.
-It may be a workspace-private bridge crate or module, but is not a new public
-architecture layer. `fluxel-renderer` is its first consumer. The bridge owns
-translation only; RenderGraph retains graph dependencies, scheduling, and
-virtual-resource decisions, while RHI retains device facts, resource
-realization, recording, submission, completion, presentation, and backend
-details.
+Before compilation, the renderer-owned, workspace-private bridge projects RHI
+`EnabledCapabilities` into `GraphTargetProfile`. It is the only capability
+translation: the profile may omit facts irrelevant to graph compilation, but
+must never manufacture, strengthen, or reinterpret an RHI capability.
+
+RenderGraph accepts logical import slots, descriptors, semantic contracts,
+required usage, and definedness. It never accepts RHI resources, device
+identity or generation, completion leases, frame attachments, live pipelines,
+or backend allocation services. At frame time, the private bridge validates
+prepared RHI bindings against the graph plan (including device/generation,
+allowed usage, completion-safe lifetime, and pipeline-interface compatibility)
+and lowers the plan to RHI `RecordedWork` and `SubmissionPlan`. It may be a
+workspace-private bridge crate or module, but is not a new public architecture
+layer. `fluxel-renderer` is its first consumer. RenderGraph retains graph
+dependencies, scheduling, and virtual-resource decisions, while RHI retains
+device facts, resource realization, recording, submission, completion,
+presentation, and backend details.
 
 ## Library ownership
 
@@ -70,7 +79,7 @@ Status is structural, not a promise of scope:
 | `fluxel-rendergraph` | `fluxel-rendering` | Existing | Graph IR, pass/resource dependencies, validation, scheduling, and virtual-resource lifetime |
 | `fluxel-renderer` | `fluxel-rendering` | Existing | Renderer integration, prepared rendering data, and the private RenderGraph/RHI bridge |
 | rendering asset residency | `fluxel-rendering` | Existing internal boundary | Persistent GPU realization keyed by logical asset and device generation, upload, recreation, last-use tracking, and retirement |
-| `fluxel-shader` | `fluxel-rendering` | Candidate | Shader assembly, reflection, variants, artifacts, and caching, subject to the `0.17` extraction decision |
+| `fluxel-shader` | `fluxel-rendering` | Candidate | Shader assembly, reflection, variants, artifacts, and caching, extracted only when its authorized vertical slice proves the boundary |
 | `fluxel-canvas` | `fluxel-rendering` | Candidate | Canvas 2D and minimal text after its authorized slice |
 | `fluxel-ui` | `fluxel-rendering` | Candidate | Purpose-built declarative UI after Canvas, text, input, and lifecycle evidence |
 | `fluxel-rendering-abi` | `fluxel-rendering` | Unscheduled | Stable native binary packaging boundary |
@@ -80,7 +89,7 @@ Status is structural, not a promise of scope:
 | `fluxel-vm-js`, `fluxel-native-bridge` | `fluxel-host` | Unscheduled | Native language-runtime integration |
 | host runtime / executable composition | `fluxel-host` | Existing internal boundary | Composition of platform crates and rendering into native deliverables |
 | `fluxel-adapter-browser` | `fluxel-jsbridge` | Existing | Browser APIs, WASM loading, lifecycle adaptation, and browser diagnostics |
-| `fluxel-js-sdk`, `fluxel-adapter-minigame` | `fluxel-jsbridge` | Candidate | Public JavaScript API and selected mini-game adaptation |
+| `fluxel-js-sdk`, `fluxel-adapter-minigame` | `fluxel-jsbridge` | Candidate | Public JavaScript API and selected mini-game adaptation; SDK core extraction requires an established Rust contract and one real adapter, not a fixed adapter count |
 | `fluxel-adapter-native` | `fluxel-jsbridge` | Unscheduled | JavaScript adaptation over native-host bridge contracts |
 
 ## Ownership rules
