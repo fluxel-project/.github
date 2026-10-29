@@ -115,6 +115,13 @@ Release evidence additionally binds all final commits and named real targets;
 neither mock boundaries nor an independently green producer and consumer prove
 their composition.
 
+The closure manifest is a versioned, machine-readable record. It names its
+schema version, stage, owning integration artifact, participating repository
+revisions, lockfile paths and hashes, commands, target/backend/runtime matrix,
+capability snapshots, inputs and expected outputs, retained artifact paths,
+unsupported routes, and known limitations. S0 selects its canonical path with
+the integration artifact; it must not be invented independently by a producer.
+
 Use stable counting terms in evidence summaries:
 
 - a **test function** is one harness-discovered test entry;

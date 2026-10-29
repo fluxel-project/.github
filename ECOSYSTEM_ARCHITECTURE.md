@@ -52,18 +52,23 @@ terrain, water, or other renderer algorithms.
 ### Material compilation
 
 ```text
-MaterialGraph -> Material IR -> material evaluation WGSL / ShaderCompositionRequest
-    -> Shader composition + renderer-selected pass template
-    -> ShaderArtifact / ShaderInterface -> renderer preparation
+MaterialGraph -> Material IR -> generic WGSL source units + interface metadata
+    -> renderer-selected template and entry points -> ShaderCompositionRequest
+    -> Shader composition / logical reflection -> RHI route and native lowering
 ```
 
 `fluxel-material` owns material function definitions/references, parameters and
-uniform schemas, call composition, and evaluation-code generation. It converts
-its IR to the Shader-owned neutral source/interface request. `fluxel-shader`
-owns complete shader programs/modules, entry points, metadata, compilation, and
-reflection; it never depends on Material or receives MaterialIr. Material does
-not depend on Renderer. Both are independent `fluxel-rendering` crates. Shader remains
-available to material, compute, particles, and post processing.
+uniform schemas, call composition, and evaluation-code generation. It lowers its
+private IR to Shader-owned generic source/interface vocabulary; it neither knows
+which pipeline will consume the material nor constructs the final request.
+FramePipeline/renderer adds the pass template, entry points, geometry interface,
+target facts, and static inputs. `fluxel-shader` owns complete logical program
+assembly, source validation/reflection, logical artifacts, variants, and cache
+identity; it never depends on Material or receives MaterialIr. RHI owns the
+opened-device route, ABI facts, backend Naga/native lowering, native compilation,
+and executable pipeline validation. Both Material and Shader are independent
+`fluxel-rendering` crates; Shader remains available to compute, particles, and
+post processing.
 
 ### Crate and portable-contract dependencies
 
@@ -103,7 +108,7 @@ Candidate and Unscheduled entries do not authorize implementation on their own.
 | `fluxel-renderer` | `fluxel-rendering` | Existing, under migration | RenderScene preparation, internal RenderGraph, FramePipeline SPI, visibility, draw preparation, residency, and rendering integration |
 | `fluxel-rendergraph` | `fluxel-rendering` | Migration state | Existing standalone crate whose semantics migrate into `fluxel-renderer`; not a target public crate |
 | `fluxel-material` | `fluxel-rendering` | Target crate | MaterialGraph, typed composition IR, material functions and call-code generation, parameter/uniform schemas, assets and instances |
-| `fluxel-shader` | `fluxel-rendering` | Target crate | Neutral composition request, complete programs/modules, entry points, compilation, metadata/reflection, variants, artifacts, interfaces, pipeline requirements, and cache identity |
+| `fluxel-shader` | `fluxel-rendering` | Target crate | Neutral composition request, complete logical programs/modules, source validation/reflection, variants, source artifacts, interfaces, pipeline requirements, and cache identity; RHI owns device-route and native compilation |
 | external `RenderFeature` crates | ecosystem consumers | MVP target | Prepare data, incrementally join batches, and declare renderer graph resources/passes through established contracts |
 | `fluxel-platform` | `fluxel-host` | Existing internal boundary | Platform lifecycle, windows, display handles, and native-service composition without rendering dependency |
 | `fluxel-fs`, `fluxel-storage`, `fluxel-net`, `fluxel-audio`, `fluxel-video`, `fluxel-native-time`, `fluxel-native-input`, `fluxel-diagnostic-sinks` | `fluxel-host` | Unscheduled | Native platform services, extracted only for a demonstrated reusable consumer |
@@ -113,8 +118,8 @@ Candidate and Unscheduled entries do not authorize implementation on their own.
 ## Ownership rules
 
 - Bases owns logical asset identity and CPU-side state. Rendering owns GPU
-  realization, upload, device-generation mapping, last-use tracking, and
-  completion-safe retirement.
+  realization, renderer-private cache keys derived from selected RHI identity
+  facts, last-use tracking, and completion-safe retirement.
 - RenderGraph transient resources are not assets. Graph resources use logical
   versions, dependencies, definedness, and lifetime analysis; physical reuse is
   decided from the graph plan and completion evidence.
@@ -129,10 +134,14 @@ Candidate and Unscheduled entries do not authorize implementation on their own.
   before recording and incorporates its access into dependencies and lifetimes.
 - Renderer coordinates residency transfers through RHI, exposing producer
   dependencies and incoming states to consuming Graph work and retaining resources
-  through completion. Features request uploads rather than submit commands.
-  Frame rendering and compute remain Graph work; there is no second frame scheduler.
-- Resource ownership is device/context identity plus generation. Cross-device or
-  stale-generation use returns a structured error before backend calls.
+  through completion. An accepted transfer may be usable by its named graph
+  consumer through an enforceable dependency before it is globally complete or
+  reusable. Per-frame transform, uniform, and bone data has a separate Frame Data
+  Upload lifecycle, though it may reuse the same lower upload mechanism. Features
+  request uploads rather than submit commands. Frame rendering and compute remain
+  Graph work; there is no second frame scheduler.
+- Resource ownership follows the selected RHI device identity and lifecycle.
+  Cross-device or stale resource use returns a structured error before backend calls.
 - Existing browser and mini-game adapters translate canvas/surface lifecycle, resize,
   foreground/background, and loss/restore. WebGPU/WebGL objects and all backend
   leases remain private implementation details.

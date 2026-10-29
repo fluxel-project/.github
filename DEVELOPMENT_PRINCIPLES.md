@@ -97,11 +97,17 @@ third-party API or behavioral compatibility is implied.
   state, logical references, reuse candidates, and CPU-side cache budgets.
   Logical reference loss means “future use is no longer requested”; it never
   proves that a GPU object is safe to destroy.
-- Rendering residency maps a logical asset generation and device generation to
-  a persistent GPU realization. Frame preparation resolves it once into a
-  prepared/imported resource; passes do not repeatedly query the asset system.
-  Pending realizations become committed only after their upload completion is
-  known, and old realizations retire only after their recorded last GPU use.
+- Rendering residency maps a logical asset generation and identity facts exposed
+  by the selected RHI baseline to a persistent GPU realization. Frame preparation
+  resolves it once into a prepared/imported resource; passes do not repeatedly
+  query the asset system. A pending realization may be usable by one named Graph
+  consumer when an enforceable RHI producer dependency exists; it is not globally
+  complete or reusable. Old realizations retire only after their recorded last
+  GPU use has terminal completion evidence.
+- Per-frame transform, uniform, and bone-palette input has a Frame Data Upload
+  lifecycle, separate from persistent residency. Both paths may reuse one lower
+  upload mechanism and RHI state/completion authority. GPU skinning, simulation,
+  culling, and indirect generation remain Graph passes.
 - RenderGraph owns per-frame logical resource versions and usage, dependencies,
   definedness, culling, scheduling, and lifetime analysis. It uses RHI portable
   resource, command, and capability vocabulary directly; graph code never
@@ -116,7 +122,9 @@ third-party API or behavioral compatibility is implied.
   cycle each frame.
 - The first renderer/graph integration keeps a cached plan live across two or
   three submitted frames and retires a recycled resource only after the
-  completion point that covers its final use.
+  completion point that covers its final use. Partial acceptance and indeterminate
+  native effects retain all affected resources until RHI provides a terminal
+  outcome; old accepted-unknown naming does not remove this obligation.
 - Capability floors are explicit. Common raster/resource behavior must not
   acquire storage or compute semantics merely because modern backends provide
   them; unsupported requirements fail with a structured capability result.
@@ -132,7 +140,9 @@ third-party API or behavioral compatibility is implied.
   milestone authorization. An owning repository is authoritative for its public
   contract and recommended usage. The integration artifact owner is
   authoritative for its scripts and locks; a Release manifest is authoritative
-  for exact commits, targets, commands, and retained evidence.
+  for exact commits, targets, commands, and retained evidence. Until S0 creates
+  it, the Rendering plan records the intended artifact and manifest locations;
+  a plan never claims those paths already exist.
 - Repository READMEs summarize current capability and link to those sources;
   they do not copy the full stage history or become a competing roadmap.
 - `ECOSYSTEM_ARCHITECTURE.md` assigns ownership and dependency direction only.
