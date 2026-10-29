@@ -39,7 +39,7 @@ authority.
 
 ```text
 RenderScene / RenderView / RenderFeatures
-    -> FramePipeline (internal SPI)
+    -> FramePipeline (renderer-owned public Rust extension trait)
     -> Renderer-internal RenderGraph
     -> fluxel-rhi
     -> private backend realization
@@ -52,13 +52,17 @@ terrain, water, or other renderer algorithms.
 ### Material compilation
 
 ```text
-MaterialGraph -> Material IR -> Shader composition
+MaterialGraph -> Material IR -> material evaluation WGSL / ShaderCompositionRequest
+    -> Shader composition + renderer-selected pass template
     -> ShaderArtifact / ShaderInterface -> renderer preparation
 ```
 
-`fluxel-material` owns material semantics and does not depend on renderer.
-`fluxel-shader` owns general compilation infrastructure and does not own
-MaterialGraph. Both are independent `fluxel-rendering` crates. Shader remains
+`fluxel-material` owns material function definitions/references, parameters and
+uniform schemas, call composition, and evaluation-code generation. It converts
+its IR to the Shader-owned neutral source/interface request. `fluxel-shader`
+owns complete shader programs/modules, entry points, metadata, compilation, and
+reflection; it never depends on Material or receives MaterialIr. Material does
+not depend on Renderer. Both are independent `fluxel-rendering` crates. Shader remains
 available to material, compute, particles, and post processing.
 
 ### Crate and portable-contract dependencies
@@ -98,8 +102,8 @@ Candidate and Unscheduled entries do not authorize implementation on their own.
 | [`fluxel-rhi`](https://github.com/fluxel-project/fluxel-rhi) | independent repository | Stable maintenance baseline | Portable GPU resources, shader/pipeline creation, recording, submission, completion, presentation, and backend realization |
 | `fluxel-renderer` | `fluxel-rendering` | Existing, under migration | RenderScene preparation, internal RenderGraph, FramePipeline SPI, visibility, draw preparation, residency, and rendering integration |
 | `fluxel-rendergraph` | `fluxel-rendering` | Migration state | Existing standalone crate whose semantics migrate into `fluxel-renderer`; not a target public crate |
-| `fluxel-material` | `fluxel-rendering` | Target crate | MaterialGraph, Material IR, parameters, material assets and instances, and graph-to-IR lowering |
-| `fluxel-shader` | `fluxel-rendering` | Target crate | Shader composition, reflection, variants, artifacts, interfaces, pipeline requirements, and cache identity |
+| `fluxel-material` | `fluxel-rendering` | Target crate | MaterialGraph, typed composition IR, material functions and call-code generation, parameter/uniform schemas, assets and instances |
+| `fluxel-shader` | `fluxel-rendering` | Target crate | Neutral composition request, complete programs/modules, entry points, compilation, metadata/reflection, variants, artifacts, interfaces, pipeline requirements, and cache identity |
 | external `RenderFeature` crates | ecosystem consumers | MVP target | Prepare data, incrementally join batches, and declare renderer graph resources/passes through established contracts |
 | `fluxel-platform` | `fluxel-host` | Existing internal boundary | Platform lifecycle, windows, display handles, and native-service composition without rendering dependency |
 | `fluxel-fs`, `fluxel-storage`, `fluxel-net`, `fluxel-audio`, `fluxel-video`, `fluxel-native-time`, `fluxel-native-input`, `fluxel-diagnostic-sinks` | `fluxel-host` | Unscheduled | Native platform services, extracted only for a demonstrated reusable consumer |
@@ -114,6 +118,19 @@ Candidate and Unscheduled entries do not authorize implementation on their own.
 - RenderGraph transient resources are not assets. Graph resources use logical
   versions, dependencies, definedness, and lifetime analysis; physical reuse is
   decided from the graph plan and completion evidence.
+- FramePipeline is renderer-owned policy exposed through a controlled public
+  Rust trait/context facade. RenderFeature supplies capabilities and declared
+  contributions; Graph plans their execution. A raster pass can contain draws
+  using several graphics pipelines (VS and optional FS); a compute pass uses CS;
+  a copy pass needs no shader. Pass identity is independent from shader program
+  identity, and Graph implementation internals stay private.
+- Reflection provides binding usage; preparation resolves concrete resources
+  and ranges. Graph validates every bound resource against pass declarations
+  before recording and incorporates its access into dependencies and lifetimes.
+- Renderer coordinates residency transfers through RHI, exposing producer
+  dependencies and incoming states to consuming Graph work and retaining resources
+  through completion. Features request uploads rather than submit commands.
+  Frame rendering and compute remain Graph work; there is no second frame scheduler.
 - Resource ownership is device/context identity plus generation. Cross-device or
   stale-generation use returns a structured error before backend calls.
 - Existing browser and mini-game adapters translate canvas/surface lifecycle, resize,
@@ -127,3 +144,9 @@ The authoritative RHI contract is maintained in `fluxel-rhi`; renderer,
 material, shader, and internal graph contracts are maintained in
 `fluxel-rendering`. Capture/replay, Canvas 2D/basic text, declarative UI,
 Blender tooling, and JavaScript encapsulation are deferred and undecided.
+
+A future engine runtime requires separate planning for Game Scene, TypeScript
+gameplay execution, the game loop, Rust/TS bindings, and script hot reload. It
+may adapt batched scene changes into RenderScene without making Renderer own
+gameplay. This is an unscheduled direction; `fluxel-jsbridge` remains platform
+lifecycle adaptation and does not become the gameplay runtime.
