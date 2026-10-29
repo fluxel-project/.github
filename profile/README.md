@@ -1,20 +1,22 @@
 # Fluxel Ecosystem
 
-Fluxel is a Rust-first rendering ecosystem with Blender as its primary
-authoring environment. Rust rendering and host contracts are authoritative;
-browser, JavaScript, WASM, and tooling layers adapt them.
+Fluxel is a Rust-first rendering ecosystem. Rust rendering and host contracts
+are authoritative.
 
 The four monorepositories are `fluxel-bases`, `fluxel-rendering`,
-`fluxel-host`, and `fluxel-jsbridge`. The portable RHI baseline is complete;
-the current authorized plan is shader assembly and material semantics.
+`fluxel-host`, and `fluxel-jsbridge`; the portable RHI lives in the independent
+[`fluxel-rhi`](https://github.com/fluxel-project/fluxel-rhi) repository. RHI is
+a stable maintenance baseline with explicit open TODOs and target-evidence
+limits. The roadmap begins with the Bases asset core and renderer-internal
+RenderGraph integration, followed by independent Material and Shader crates.
 
 The host repository contains both reusable platform crates and runtime
 composition. Platform crates do not depend on rendering; runtime composition
 may combine them with `fluxel-rendering` to produce native applications.
 
-Fluxel is not a compatibility layer for another engine, UI framework, DOM, or
-CSS implementation. It grows through demonstrated vertical slices and named
-real-target evidence.
+Fluxel grows through demonstrated Rust vertical slices and named real-target
+evidence. Capture/replay, Canvas 2D/basic text, declarative UI, Blender tooling,
+and JavaScript encapsulation are deferred and undecided.
 
 For the authoritative plan sequence, ownership model, and evidence rules,
 see the organization documentation:

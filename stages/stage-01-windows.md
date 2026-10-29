@@ -1,5 +1,10 @@
 # Stage 1 — Windows visible renderer
 
+> Historical execution journal. It preserves the original closure and evidence;
+> it does not authorize current work or define the current crate architecture.
+> See [ROADMAP.md](../ROADMAP.md) for delivery order and the independent
+> `fluxel-rhi` repository for current RHI contracts and evidence.
+
 Build one durable Windows scene before broadening the runtime. This stage
 extends the Stage 0 baseline; it does not establish asset or loader contracts,
 a general platform API, or an application runtime.

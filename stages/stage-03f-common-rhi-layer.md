@@ -2,22 +2,25 @@
 
 **Status:** Historical implementation journal. It is not the 0.16 API contract.
 
-**Normative precedence:** The [RHI API v1 specification](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/design-rhi.md)
-and the current [foundation version plan](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/version-plan.md)
-are authoritative. This journal records earlier investigations and increments
-only. Its earlier RenderGraph/RHI terminology is historical: the current
-architecture is the ownership/dependency DAG in
-[ECOSYSTEM_ARCHITECTURE](../ECOSYSTEM_ARCHITECTURE.md), not a universal linear
-stack. Renderer, RenderGraph, and shader/material runtime may directly use RHI
-portable contracts, and there is no `GraphTargetProfile` or renderer-owned
-Graph/RHI bridge layer. Statements that
+**Normative precedence:** The stable RHI authority is its
+[RHI architecture](https://github.com/fluxel-project/fluxel-rhi/blob/main/crates/rhi/DESIGN.md),
+[core API and SPI design](https://github.com/fluxel-project/fluxel-rhi/blob/main/crates/core/DESIGN.md),
+[verification record](https://github.com/fluxel-project/fluxel-rhi/blob/main/documents/verification.md),
+and [open TODOs](https://github.com/fluxel-project/fluxel-rhi/blob/main/TODO.md).
+The current ecosystem plan is [ROADMAP.md](../ROADMAP.md). This journal records
+earlier investigations and increments only. Its earlier RenderGraph/RHI
+terminology is historical: the target architecture is the ownership/dependency
+DAG in [ECOSYSTEM_ARCHITECTURE](../ECOSYSTEM_ARCHITECTURE.md), with RenderGraph
+internal to `fluxel-renderer` and separate `fluxel-material` and
+`fluxel-shader` crates. Statements that
 capability domains are public Rust traits, closed renderer recipes define RHI
 API, compressed formats are P0, or an earlier facade/type spelling is frozen
 are likewise superseded. Reconcile every work item before implementation.
 
-**Owning repository:** `fluxel-rendering`. `fluxel-jsbridge` participates only
-through its existing pinned browser consumers, which must build and pass before
-the wasm entry-point change lands.
+**Historical ownership:** This journal was written when RHI implementation work
+lived under `fluxel-rendering`. The independent `fluxel-rhi` repository now owns
+the stable RHI contract and backend work. `fluxel-jsbridge` participation here
+is historical evidence, not a current migration requirement.
 
 ## 0. Confirmed decisions
 

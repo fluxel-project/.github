@@ -1,13 +1,17 @@
 # Stage 2.1 / 0.9 — WebGL2 retained-scene closure
 
+> Historical execution journal. It preserves the original closure and evidence;
+> it does not authorize current work or define the current crate architecture.
+> See [ROADMAP.md](../ROADMAP.md) for delivery order and the independent
+> `fluxel-rhi` repository for current RHI contracts and evidence.
+
 0.9 ports the retained Stage 1 deterministic red/green/blue multi-object scene
 to one real WebGL2 target. It is a single WebGL2 closure inside Stage 2, not a
 claim of generic browser, WebGPU, or mini-game support.
 
 **Named supported target:** Windows 11 x64 with Google Chrome Stable
 `153.0.8010.36`, WebGL2. Microsoft Edge 153 may be run as auxiliary
-compatibility evidence, but does not extend the support claim. WebGPU and one
-real mini-game host remain later, separately named Stage 2 gates.
+compatibility evidence, but does not extend the support claim.
 
 **Owning repository:** `fluxel-rendering` owns the WASM rendering package,
 portable RenderGraph semantics, rendering lifetime, and the retained scene.
@@ -95,8 +99,8 @@ Close 0.9 only when the named Chrome target runs the retained scene through
 WebGL2, survives the declared resize/visibility/context-recovery sequence,
 reports clean or explicitly accepted diagnostics, and has retained visual,
 lifecycle, and scoped performance evidence. Missing real-target evidence keeps
-the Chrome support claim open. Completion of 0.9 does not close Stage 2, does
-not authorize WebGPU, and does not choose or close the mini-game host gate.
+the Chrome support claim open. This record makes no claim beyond the named
+WebGL2 target.
 
 ## 0.9 closure record
 
@@ -122,8 +126,7 @@ The rendering candidate also passed its Windows AMD Radeon 780M real-GPU DX12
 and Vulkan conformance gate, 83 passed / 0 failed across the renderer and RHI
 test binaries.  That gate supports retained
 renderer correctness but is not substituted for the Chrome evidence above.
-This record closes only Stage 2.1 / 0.9; it leaves WebGPU and the explicitly
-selected real mini-game-host closure unchecked.
+This record closes only the named Stage 2.1 / 0.9 WebGL2 claim.
 
 Durable publication:
 

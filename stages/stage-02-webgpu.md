@@ -1,5 +1,10 @@
 # Stage 2.2 / 0.10 — WebGPU retained-scene closure
 
+> Historical execution journal. It preserves the original closure and evidence;
+> it does not authorize current work or define the current crate architecture.
+> See [ROADMAP.md](../ROADMAP.md) for delivery order and the independent
+> `fluxel-rhi` repository for current RHI contracts and evidence.
+
 0.10 closes one named WebGPU target for the retained Stage 1 black/red/green/
 blue scene. It follows, and does not replace, the completed Stage 2.1 WebGL2
 closure in [stage-02-web.md](stage-02-web.md). It is not a generic-browser,
@@ -105,7 +110,5 @@ this stage's named-target rendering claim.
 ## Non-goals and closure boundary
 
 This stage does not add generic WebGPU/browser support, a public WebGPU API,
-multiple queues, compute/storage/material breadth, JS scene authority, Host
-runtime/input, or a mini-game host. Its success does not alter the completed
-WebGL2 claim. Stage 2 remains open until a separately selected real mini-game
-host has its own target-specific evidence.
+multiple queues, compute/storage/material breadth, JS scene authority, or Host
+runtime/input. Its success does not alter the completed WebGL2 claim.

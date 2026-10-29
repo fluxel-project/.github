@@ -6,9 +6,12 @@ requirements. Individual repositories own their public APIs, implementation
 details, and release procedures.
 
 Fluxel currently has four monorepositories: `fluxel-bases`,
-`fluxel-rendering`, `fluxel-host`, and `fluxel-jsbridge`. The portable RHI
-baseline is complete; shader assembly and material semantics are the current
-authorized plan.
+`fluxel-rendering`, `fluxel-host`, and `fluxel-jsbridge`, plus the independent
+[`fluxel-rhi`](https://github.com/fluxel-project/fluxel-rhi) repository. RHI is
+a stable maintenance baseline: consumer-proven additions remain possible, while
+its open TODOs and target-evidence limits remain explicit. The current roadmap
+starts with the Bases asset core and renderer-internal RenderGraph integration,
+then establishes separate Material and Shader crates.
 
 `ROADMAP.md` is the single source of truth for plan order and authorized work.
 This README intentionally summarizes the current state and does not keep a

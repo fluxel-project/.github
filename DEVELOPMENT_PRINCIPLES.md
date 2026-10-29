@@ -1,9 +1,10 @@
 # Fluxel Development Principles
 
-These principles govern the Fluxel ecosystem and its four monorepositories:
-`fluxel-bases`, `fluxel-rendering`, `fluxel-host`, and `fluxel-jsbridge`. They
-are stable decision rules, not a release schedule or a promise to create every
-named crate.
+These principles govern the Fluxel ecosystem: the `fluxel-bases`,
+`fluxel-rendering`, `fluxel-host`, and `fluxel-jsbridge` monorepositories, plus
+the independent [`fluxel-rhi`](https://github.com/fluxel-project/fluxel-rhi)
+repository. They are stable decision rules, not a release schedule or a promise
+to create every named crate.
 
 Fluxel is a native-first, AI-friendly lightweight rendering runtime with an
 approachable scene API. Familiar concepts may inform usability studies, but no
@@ -11,9 +12,8 @@ third-party API or behavioral compatibility is implied.
 
 ## Native-first semantics
 
-- Rust rendering and host contracts are authoritative. JavaScript, WASM, FFI,
-  and declarative UI layers adapt those contracts; they do not define renderer
-  or host core semantics.
+- Rust rendering and host contracts are authoritative. Platform integration does
+  not define renderer or host core semantics.
 - Native-first does not mean desktop-only. Portable behavior is proved on each
   target, while backend-specific objects remain behind native boundaries.
 - Prefer explicit ownership, borrowing, typed handles, lifecycle states, and
@@ -28,20 +28,6 @@ third-party API or behavioral compatibility is implied.
   adopted only when they are natural Rust concepts.
 - Foreign inheritance, plugin contracts, implicit global state, material
   breadth, and compatibility wrapper types must not enter the native core.
-- The JavaScript SDK is replaceable: Rust, C#, Lua, or another language may
-  provide an SDK over the same lower contracts. Compatibility work requires an
-  explicit new decision; it cannot be inferred from familiar scene names.
-
-## Purpose-built UI
-
-Fluxel UI grows from demonstrated HUD, settings, and application-screen needs
-after Canvas, text, input, and host lifecycles are proven.
-
-- Fluxel does not target third-party UI, DOM, or CSS compatibility.
-- Templates, reactivity, component lifecycles, and plugin behavior are not
-  native-core contracts.
-- Declarative ideas may be studied later, but any retained surface follows
-  Fluxel ownership and resource-lifetime semantics.
 
 ## Demo-driven scope and ownership
 
@@ -49,10 +35,13 @@ after Canvas, text, input, and host lifecycles are proven.
   Repository ownership determines where code belongs, not when a crate must
   exist.
 - [ECOSYSTEM_ARCHITECTURE.md](ECOSYSTEM_ARCHITECTURE.md) assigns each capability
-  to one of the four monorepositories. It reserves candidate crate boundaries
+  to an owning repository. It reserves candidate crate boundaries
   but does not authorize extraction or change roadmap order.
 - Reuse and extend the current demo. Extract a crate only after the vertical
   slice demonstrates an independently changing responsibility.
+- The planned `fluxel-material` and `fluxel-shader` crates are the explicit
+  exception: their separate semantic responsibilities are part of the approved
+  rendering target. Their APIs still grow only through vertical-slice evidence.
 - When a real vertical slice discovers a missing capability owned by another
   repository, implement that owner's smallest complete behavior and make the
   current slice actually consume and verify it. Do not duplicate a temporary
@@ -69,28 +58,38 @@ after Canvas, text, input, and host lifecycles are proven.
   contracts, including asset identity and lifecycle plus diagnostic schema and
   routing, but never platform implementations, GPU objects, or application
   policy.
-- `fluxel-rendering` owns RHI, RenderGraph, renderer submission, rendering-side
-  asset residency, Canvas, UI, shaders, and native/WASM rendering packaging. It
-  has no main loop, I/O, input collection, storage, networking, audio, or
-  video.
-- `fluxel-host` owns native platform lifecycle and implementations for window
-  and surface handling, input and time acquisition, filesystem, storage,
+- `fluxel-rhi` owns the portable RHI contract and its private backend
+  implementations: physical resource realization, command recording,
+  submission, completion, presentation, and GPU synchronization. It has no
+  renderer, scene, main loop, or platform-service policy.
+- `fluxel-rendering` owns renderer submission, rendering-side asset residency,
+  the renderer-internal RenderGraph, `FramePipeline` SPI, material semantics,
+  and shader infrastructure. Its
+  target crate layout is `fluxel-material`, `fluxel-shader`, and
+  `fluxel-renderer`; RenderGraph and FramePipeline are renderer internals. It
+  may depend on `fluxel-rhi`; it does not own or embed RHI backends.
+- `fluxel-host` owns native platform lifecycle and window-handle lifetimes,
+  input and time acquisition, filesystem, storage,
   networking, audio, video, native diagnostic sinks, and executable packaging.
   Its reusable platform crates may depend on bases but not rendering. The host
   repository's runtime/executable-composition layer may depend on those crates
   and rendering; neither bases nor rendering may depend on host.
-- A host window supplies standard window/display handles; rendering may accept
-  those traits from Host or another standards-compatible provider but never
-  imports Host. RHI owns the native surface, swapchain, presentation, and GPU
-  synchronization derived from the handle.
-- `fluxel-jsbridge` owns the default JavaScript SDK plus browser, mini-game, and
-  native adapters. It composes lower contracts for developers without becoming
-  their semantic authority. Extract an SDK core only when an established Rust
-  contract and one real adapter prove a stable language-level boundary; later
-  adapters must not force platform-specific behavior into that core.
+- A host window supplies standard window/display handles. A host-to-RHI
+  integration adapter borrows them while establishing an opaque presentation
+  target; `fluxel-rhi` never imports Host. RHI owns the native surface,
+  swapchain, presentation, and GPU synchronization derived from the handle.
+- Existing browser and mini-game integrations own their proved platform
+  lifecycle adaptation and diagnostics; they do not become semantic authority.
 - Shared assets and logs remain split by responsibility: bases owns asset
   identity and diagnostic records; rendering owns GPU residency; host and JS
   adapters own platform reads and diagnostic sinks.
+- RHI is maintained, not extended by a feature checklist. A change starts with
+  a real renderer or graph consumer, an exact dependency revision, and a
+  bounded integration proof. Existing RHI TODOs and unproved target evidence
+  remain visible rather than being silently treated as closed.
+- Capture/replay, Canvas 2D/basic text, declarative UI, Blender tooling, and
+  JavaScript encapsulation are deferred and undecided. No current principle
+  assigns them an architecture, API, owner, dependency, or delivery condition.
 
 ## Resource lifetime domains
 
@@ -109,16 +108,23 @@ after Canvas, text, input, and host lifecycles are proven.
   accesses backend-private native API. Graph-transient resources are not assets.
   Cross-graph pooling, reuse between distinct logical resources, and memory
   aliasing require their own measured workload and explicit alias-safety model.
-- RHI owns physical allocation requirements and realization, creation, reuse,
-  destruction, and backend-specific aliasing or synchronization. A graph
+- RHI reports physical allocation requirements, realizes and destroys native
+  objects when instructed, and executes backend-specific aliasing and
+  synchronization instructions. RenderGraph and the renderer decide reuse and
+  retirement from their lifetime plan and observed completion evidence. A graph
   resource reaching logical end-of-life does not imply a physical create/drop
   cycle each frame.
+- The first renderer/graph integration keeps a cached plan live across two or
+  three submitted frames and retires a recycled resource only after the
+  completion point that covers its final use.
 - Capability floors are explicit. Common raster/resource behavior must not
   acquire storage or compute semantics merely because modern backends provide
   them; unsupported requirements fail with a structured capability result.
 - Asset single-flight coordinates one producer for one logical identity but
   does not own source mechanics. File/network/memory reads, decoding,
-  cancellation, retry, progress, and source errors belong to Loader.
+  cancellation, retry, progress, and source errors belong to caller-owned loading
+  orchestration and platform services. A reusable Loader crate remains a
+  candidate until a real consumer proves that extraction.
 
 ## Documentation and cross-repository truth
 
@@ -131,7 +137,8 @@ after Canvas, text, input, and host lifecycles are proven.
   they do not copy the full stage history or become a competing roadmap.
 - `ECOSYSTEM_ARCHITECTURE.md` assigns ownership and dependency direction only.
   It does not restate plan sequencing or define RHI, RenderGraph, or renderer API
-  semantics.
+  semantics. The authoritative RHI contract lives in the independent
+  `fluxel-rhi` repository.
 - A producer contract change must build and test every affected pinned
   consumer before merge. A cross-repository Release manifest records all
   participating commits/tags, lockfiles, capability facts, and evidence.
