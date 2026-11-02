@@ -22,19 +22,30 @@ release; it does not prove untested future targets.
 
 ## Verification frequency
 
-### Every commit
+### Development validation batches
 
-Run focused CPU tests and the relevant compile, formatting, Clippy, and
-documentation checks for changed crates or modules. Run focused failure-path
-and regression checks for the changed contract. These checks are deliberately
-fast; they do not substitute for a real target.
+Repository-local instructions select the cadence for focused checks during
+implementation. Group coherent changes into a stable, meaningful validation
+batch; then run the necessary focused CPU tests and relevant compile, formatting,
+Clippy, documentation, failure-path, and regression checks for the changed
+contract. A small edit does not require a fresh compile or test run when the
+same affected batch is still evolving. A local rule may require an earlier
+minimal check when an error blocks further work or a critical interface must be
+confirmed.
+
+These checks are deliberately focused; they do not substitute for a real target.
+They do not authorize a workspace-wide regression merely because a routine batch
+ended. Repository-local instructions may reserve full workspace checks for a
+major refactor or a complete goal/stage closure.
 
 ### Active-stage development
 
-Run the active closure's real-target oracle whenever a change can affect its
-visible behavior, lifecycle, backend realization, or performance measurement.
+Run the active closure's real-target oracle at coherent risk boundaries: after
+a complete affected execution path, before a claim that needs it, or sooner when
+the change can invalidate visible behavior, lifecycle, backend realization, or
+performance measurement and focused logic evidence cannot resolve the risk.
 Use focused checks while the closure is evolving; a full device matrix is not
-required for every shared-code commit.
+required for every shared-code commit or routine implementation batch.
 
 Escalate the active check when risk warrants it, such as a change to portable
 resource lifetime, synchronization semantics, shared rendering behavior, or a

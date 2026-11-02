@@ -17,6 +17,11 @@ S0 Foundation -> S1 RenderGraph -> S2 Shader
 
 S0 and S1 are one foundation closure. After S0 pins the inputs, their bounded work may overlap, but neither closes independently. S4 may proceed alongside S3 after S2 establishes the executable shader route. S5 shapes the public extension surface and supplies a small external compile/prototype proof; S6 is the integrated closure that proves it under real rendering work.
 
+The S0/S1 foundation has been accepted for the named Windows DX12 and WGL
+matrix. Its [Rendering closure record](https://github.com/fluxel-project/fluxel-rendering/blob/1085c9e7e8fd50b1cfa58201b1838687263c482e/documents/s0-s1-closure.md)
+identifies exact dependencies, evidence and deferred targets. S2 and later work
+remains future work; this foundation acceptance is not a release claim.
+
 ## S0 — Foundation
 
 Owners: `fluxel-bases`, `fluxel-rendering`, and `fluxel-rhi` for their respective contracts.
@@ -51,7 +56,7 @@ Owner: `fluxel-rendering`.
 
 Create `fluxel-shader` as reusable program composition infrastructure. It owns complete logical program assembly, source-level validation and reflection, logical interfaces, source artifacts, variants, and their cache identity. It is usable by Material, compute, particles, and post-processing.
 
-Its first consumer is a standalone WGSL vertex/fragment or compute program that is validated and reflected, then creates a real RHI shader and pipeline and executes through S1. `fluxel-rhi` remains the authority for an opened device's shader route, target ABI key, backend Naga/native lowering, native compilation, and executable pipeline validation. Logical source artifacts cache from logical composition inputs; device-resident shader and pipeline keys additionally include the selected device, route, and ABI facts.
+Its first consumer is a standalone WGSL vertex/fragment or compute program that is validated and reflected, then creates a real RHI shader and pipeline and executes through S1. Its logical input interface supports consumer-provided geometry semantics without freezing a renderer vertex struct; Preparation later resolves stream packing and executable layouts. `fluxel-rhi` remains the authority for an opened device's shader route, target ABI key, backend Naga/native lowering, native compilation, and executable pipeline validation. Logical source artifacts cache from logical composition inputs; device-resident shader and pipeline keys additionally include the selected device, route, and ABI facts.
 
 **Exit:** a complete non-Material program produces retained real-target output, with reflected logical bindings, selected RHI route, exact revision, and structured unsupported or ABI-mismatch diagnostics.
 
@@ -69,37 +74,49 @@ Material lowers its private IR to generic WGSL source units and interface metada
 
 Owner: `fluxel-rendering`.
 
-Build render-only, data-oriented scene storage: generational `RenderId`, mesh, camera/view, transform, bounds, batched ChangeSets, dirty ranges, and a stable frame snapshot. ECS and ordinary adapters both map external identity into that batch boundary; Renderer does not import an ECS.
+Build render-only, data-oriented scene storage: generational `RenderId`, reference mesh data, camera/view, transform, bounds, typed Feature storage, batched ChangeSets, dirty ranges, and a stable frame snapshot. ECS and ordinary adapters both map external identity into that batch boundary; Renderer does not import an ECS or prescribe a universal SoA/AoS layout.
 
 Define only the public Rust types needed by an external FramePipeline and RenderFeature: the extension trait, controlled context, opaque handles, phase contribution, error surface, and visibility restrictions. Keep Graph compiler, allocator, scheduler, RHI submission, and backend objects private. An external crate must compile against this provisional surface before it is stabilized.
 
-**Exit:** multiple objects and views update incrementally with stale-ID and conflicting-batch refusal; snapshots admit concurrent reads; the external prototype cannot reach private Graph/RHI execution state.
+Algorithm-specific traits normally remain Feature- or consumer-owned. Core adds
+only a cross-Feature protocol with demonstrated shared snapshot, identity,
+phase/Graph, resource-access, and lifecycle semantics; repeated consumers alone
+do not justify promotion. Rendering extensibility uses Rust generics, traits
+and monomorphization exclusively, including setup. Concrete pipelines and typed
+Feature sets are composed at compile time without `dyn Trait`, trait-object
+registries or runtime type erasure. Runtime enablement uses state; required
+selection uses explicit enum branches over known compiled implementations.
+Start with ordinary traits, structs, tuples and necessary associated types,
+not a generic framework. Static dispatch still needs measurement of code size,
+compile time and workload behavior rather than a zero-cost claim.
+
+**Exit:** multiple objects and views update incrementally with stale-ID and conflicting-batch refusal; snapshots admit concurrent reads; typed Feature data snapshots without a universal layout; and the external prototype cannot reach private Graph/RHI execution state. A CPU batch proof does not claim a GPU-culling/indirect protocol.
 
 ## S5 — Forward integration candidate
 
 Owner: `fluxel-rendering`.
 
-Implement the public FramePipeline facade, phase policy, culling, sorting, draw preparation, Material/Shader resolution, persistent residency, and a minimal Forward pipeline. Render a textured multi-mesh scene through `RenderScene -> FramePipeline -> RenderGraph -> RHI`.
+Implement the public FramePipeline facade, phase policy, batch preparation, Material/Shader resolution, persistent residency, and a minimal Forward pipeline. Local visibility, ordering, batching, geometry, and deformation algorithms remain replaceable Feature/Pipeline choices; no global culling/sorting singleton is required. Render a textured multi-mesh scene through `RenderScene -> FramePipeline -> RenderGraph -> RHI`.
 
 Persistent residency uploads serve immutable or streaming device-local content. Per-frame transform, uniform, and bone-palette data use a Frame Data Upload path with a separate lifetime and update policy, although both may reuse the same low-level upload mechanism and RHI completion/state authority. GPU skinning, simulation, culling, and indirect generation are RenderGraph passes.
 
 An accepted upload with an enforceable RHI dependency may serve its named graph consumer before terminal completion; it is not globally complete or reusable. Features request preparation and never submit independently.
 
-**Exit:** prepared binding manifests cover every concrete buffer/texture access, including ranges and dynamic changes; the in-tree Forward path renders real output and the external prototype exercises its public facade.
+**Exit:** prepared binding manifests cover every concrete buffer/texture access, including ranges and dynamic changes; the in-tree Forward path renders real output; compatible interleaved, separate, and mixed geometry streams resolve against Shader requirements; and the external prototype replaces one local algorithm through its public facade. Missing attributes or incompatible phase/product combinations fail structurally.
 
 ## S6 — Extensibility MVP closure
 
 Owner: `fluxel-rendering`, with an independent external Rust crate.
 
-The external crate supplies one RenderFeature and one FramePipeline through only the S4 public facade. In one real frame it contributes batched typed data and a phase, declares Graph resource access, uses a custom material function, and renders with the same Material, Shader, Renderer, Graph, and RHI path as the built-in mesh. It cannot introduce a core object-type switch, direct submission, or a second frame scheduler.
+The external crate supplies one RenderFeature and one FramePipeline through only the S4 public facade. In one real frame it contributes batched typed data and a phase, declares Graph resource access, uses a custom material function, and renders with the same Material, Shader, Renderer, Graph, and RHI path as the built-in mesh. The same frame demonstrates composition with a distinct local provider; phase policy performs any required final merge/order or rejects an incompatible combination. It cannot introduce a core object-type switch, direct submission, or a second frame scheduler.
 
-**Exit:** that integrated artifact and its failure cases prove the exercised extension subset. This is the first renderer product closure; dynamic DLL loading and a stable plugin binary ABI remain unscheduled.
+**Exit:** that integrated artifact and its failure cases prove the exercised extension subset, using statically composed concrete Feature and Pipeline types without trait-object dispatch or runtime type erasure. This is the first renderer product closure. Runtime loading of unknown Feature types and a stable plugin binary ABI are outside the static extension architecture.
 
 ## S7 — Selected rendering expansion
 
 Owner: `fluxel-rendering`.
 
-Expand only through selected consumers: Code Nodes and broader MaterialGraph authoring, PBR, Forward+, Deferred, shadows, PostFX, and chosen Features such as skinning, terrain, water, or particles. Deferred is a second FramePipeline over shared scene/material contracts. A materially different second Feature must prove cross-pass and shader-extension contracts before they stabilize. Each selected capability has a bounded acceptance artifact; this stage does not require every listed algorithm.
+Expand only through selected consumers: Code Nodes and broader MaterialGraph authoring, PBR, Forward+, Deferred, shadows, PostFX, and chosen Features such as skinning, terrain, water, or particles. Deferred is a second FramePipeline over shared scene/material contracts. A materially different second Feature proves the selected deformation, GPU-product, cross-pass, or shader-extension contracts before they stabilize. Each selected capability has a bounded acceptance artifact; this stage does not require every listed algorithm.
 
 ## S8 — Measured performance and resource strategy
 

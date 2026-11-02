@@ -26,8 +26,10 @@ third-party API or behavioral compatibility is implied.
   is not a backend for another scene runtime.
 - `Scene`, `Camera`, `Mesh`, `Geometry`, `Material`, and `Transform` may be
   adopted only when they are natural Rust concepts.
-- Foreign inheritance, plugin contracts, implicit global state, material
-  breadth, and compatibility wrapper types must not enter the native core.
+- Foreign inheritance, compatibility-driven plugin contracts, implicit global
+  state, material breadth, and compatibility wrapper types must not enter the
+  native core. Rust crate extensions through demonstrated renderer contracts
+  remain in scope.
 
 ## Demo-driven scope and ownership
 
@@ -68,6 +70,29 @@ third-party API or behavioral compatibility is implied.
   target crate layout is `fluxel-material`, `fluxel-shader`, and
   `fluxel-renderer`; RenderGraph and FramePipeline are renderer internals. It
   may depend on `fluxel-rhi`; it does not own or embed RHI backends.
+- Renderer uses data-oriented, batch-level extension seams. `RenderFeature` and
+  `FramePipeline` are established through real consumers; local visibility,
+  geometry, ordering, batching, and deformation algorithms may be selected by
+  external Rust crates and coexist in one frame. This does not imply per-object
+  virtual calls, a mandatory ECS, a global culling/sorting service, or a dynamic
+  plugin ABI. Phase policy owns cross-Feature composition, including transparent
+  ordering or explicit compositing.
+- Algorithm traits default to the Feature or external crate that owns the
+  algorithm and its data. Renderer Core defines a shared trait only when real
+  consumers demonstrate a common cross-Feature snapshot, identity, resource,
+  phase/Graph, and lifecycle contract; consumer count alone is insufficient.
+- Rendering extension contracts use Rust generics, traits and monomorphization
+  exclusively, including setup. Feature, Pipeline, Geometry, Visibility, Sorting,
+  Batching and local strategies are concrete compile-time compositions. Do not
+  use `dyn Trait`, `Box<dyn ...>`, trait-object collections, runtime type erasure
+  or a dynamic plugin registry. Runtime enablement uses state; required switching
+  uses explicit enum branches among known compiled implementations. Unknown
+  Feature types cannot be loaded at runtime. Start with ordinary traits, structs,
+  tuples and necessary associated types, without a generic framework. Scene
+  data, geometry descriptors and Graph topology remain runtime data. Static
+  dispatch is not a zero-cost or automatic-inlining guarantee: measure code
+  size, compile time and workload behavior. This constraint concerns Rendering
+  extensibility and does not authorize RHI or platform contract changes.
 - `fluxel-host` owns native platform lifecycle and window-handle lifetimes,
   input and time acquisition, filesystem, storage,
   networking, audio, video, native diagnostic sinks, and executable packaging.
@@ -108,6 +133,16 @@ third-party API or behavioral compatibility is implied.
   lifecycle, separate from persistent residency. Both paths may reuse one lower
   upload mechanism and RHI state/completion authority. GPU skinning, simulation,
   culling, and indirect generation remain Graph passes.
+- RenderScene is a renderer-domain batch snapshot. ECS, scene-graph, and
+  application adapters preserve their own identity and scheduling models. SoA,
+  AoS, and AoSoA are selected from access patterns, not made public layout
+  requirements. Geometry stream/attribute data is matched with logical Shader
+  requirements in preparation; animation evaluation remains external while
+  deformation consumes its explicit inputs through uploads or Graph passes.
+- CPU-visible batches and GPU-produced visibility/indirect products use distinct
+  contracts. GPU products must declare their Graph producer, consumers, accesses,
+  and lifetime; no CPU readback is implied. A Feature-local sort is only a
+  pre-sort when a phase requires final cross-Feature ordering.
 - RenderGraph owns per-frame logical resource versions and usage, dependencies,
   definedness, culling, scheduling, and lifetime analysis. It uses RHI portable
   resource, command, and capability vocabulary directly; graph code never
@@ -162,6 +197,10 @@ third-party API or behavioral compatibility is implied.
 - Keep names, module layout, lifecycle terms, and backend structure stable and
   symmetric. An agent should be able to predict where code, tests, examples,
   and documentation belong.
+- Place each crate's unit test implementations under `src/tests/`, grouped by
+  the component they exercise, and integration tests under the crate-root
+  `tests/` directory. Production modules keep only test-only module declarations
+  or references. Apply the same unit/integration distinction to non-Rust packages.
 - Prefer small explicit APIs, typed errors, visible state transitions, and
   deterministic behavior. Avoid magic registration, hidden global state,
   stringly typed contracts, implicit resource cloning, and macro-generated

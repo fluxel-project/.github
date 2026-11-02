@@ -17,6 +17,16 @@ then establishes separate Material and Shader crates.
 This README intentionally summarizes the current state and does not keep a
 second plan history.
 
+Fluxel Rendering is a data-oriented, trait-extensible framework: external Rust
+crates assemble Feature-local geometry, visibility, ordering, batching, and
+deformation algorithms over typed batches. Renderer remains ECS-friendly without
+depending on an ECS; FramePipeline coordinates phases and Graph remains the only
+normal GPU-work route. The roadmap defines when these contracts become public.
+Rendering extension contracts use generics, traits and monomorphization
+exclusively, with no trait-object dispatch or runtime type erasure. Runtime
+enablement uses state; implementation switching uses explicit enum branches
+among compiled concrete types.
+
 - [Roadmap](ROADMAP.md)
 - [Ecosystem architecture](ECOSYSTEM_ARCHITECTURE.md)
 - [Development principles](DEVELOPMENT_PRINCIPLES.md)

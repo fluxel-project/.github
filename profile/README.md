@@ -18,6 +18,17 @@ Fluxel grows through demonstrated Rust vertical slices and named real-target
 evidence. Capture/replay, Canvas 2D/basic text, declarative UI, Blender tooling,
 and JavaScript encapsulation are deferred and undecided.
 
+The target renderer is data-oriented and ECS-friendly without requiring an ECS.
+Applications assemble ordinary Rust-crate Features and frame policies from typed
+batches; local geometry, visibility, ordering, batching, and deformation choices
+can coexist. Renderer centralizes frame composition, Graph authority, and
+completion-safe GPU lifetime rather than imposing a fixed mesh or one culling
+algorithm.
+Rendering extensions use Rust generics, traits and monomorphization exclusively,
+with no trait-object dispatch or runtime type erasure. Runtime enablement uses
+state; required implementation switching uses explicit enum branches among
+known compiled types.
+
 For the authoritative plan sequence, ownership model, and evidence rules,
 see the organization documentation:
 
