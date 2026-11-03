@@ -9,10 +9,10 @@ The four monorepositories are `fluxel-bases`, `fluxel-rendering`,
 a stable maintenance baseline with explicit open TODOs and target-evidence
 limits. Rendering implements the Bases asset integration, private RenderGraph,
 independent Shader core, minimal Material core, and a bounded dense CPU
-RenderScene snapshot reference and a provisional public CPU-feature facade. Its
-typed storage, issued handles, and controlled CPU phase do not establish a
-FramePipeline or GPU scene API; those remain pending, along with the roadmap's
-evidence and support limits.
+closed bounded CPU RenderScene/typed-feature data boundary and a provisional
+public CPU-feature facade. Its independently reviewed typed storage, issued
+handles, and controlled CPU phase do not establish a FramePipeline or GPU scene
+API; those remain pending, along with the roadmap's evidence and support limits.
 
 The host repository contains both reusable platform crates and runtime
 composition. Platform crates do not depend on rendering; runtime composition

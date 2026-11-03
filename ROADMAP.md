@@ -23,10 +23,10 @@ identifies exact dependencies, evidence and deferred targets. Rendering commit
 [`8ddf2da`](https://github.com/fluxel-project/fluxel-rendering/commit/8ddf2da072e7d48331e423a6921f4deaffadf279)
 implements S2 Shader and minimal S3 Material, with focused tests and named
 Windows DX12/WGL integration runs. This does not extend support to other targets
-or certify full regression. Rendering now has a bounded S4 CPU RenderScene
-implementation, public typed-feature facade, and independent external reference.
-The facade is not FramePipeline or GPU scene work and creates no new support
-claim; S4 closure and the S5/S6 integration gates remain pending.
+or certify full regression. Rendering now has a closed bounded S4 CPU
+RenderScene/typed-feature data boundary, with independently reviewed external
+evidence at product `e4ec252`. The facade is not FramePipeline or GPU scene work
+and creates no new support claim; the S5/S6 integration gates remain pending.
 
 ## S0 — Foundation
 
@@ -103,10 +103,11 @@ and backend objects remain private.
 
 This is a bounded provisional public CPU facade, not a Forward/GPU extension
 surface. The compile-fail negative confirms that the external dependency cannot
-name Renderer-private Graph state. The formal S4 exit still requires its original
-bounded public/privacy and independent-consumer acceptance assessment; no
-unfinished S4 requirement moves to S5. S5 consumes a closed S4 boundary for
-Forward/GPU integration and does not retroactively close it.
+name Renderer-private Graph state. Its original data/privacy and independent-
+consumer acceptance is closed by the reviewed
+[S4 CPU closure record](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/s4-cpu-closure.md).
+No unfinished S4 requirement moves to S5. S5 consumes this closed CPU boundary
+for Forward/GPU integration and does not retroactively expand it.
 
 Algorithm-specific traits normally remain Feature- or consumer-owned. Core adds
 only a cross-Feature protocol with demonstrated shared snapshot, identity,
@@ -124,7 +125,7 @@ Focused CPU evidence covers incremental multi-object/view updates, stale-ID and
 conflicting-batch refusal, capacity and value refusal, immutable concurrent
 snapshot reads, dirty ranges, adapter equivalence, and the public CPU facade's
 typed-storage/issuer/phase error boundaries. This is not GPU culling, indirect
-work, a FramePipeline contract, or a complete S4 closure.
+work, a FramePipeline contract, or a GPU/full-regression closure.
 
 ## S5 — Forward integration candidate
 

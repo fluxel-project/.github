@@ -12,10 +12,11 @@ a stable maintenance baseline: consumer-proven additions remain possible, while
 its open TODOs and target-evidence limits remain explicit. The current roadmap
 starts with the Bases asset core and renderer-internal RenderGraph integration.
 Rendering implements the independent Shader and minimal Material cores plus a
-bounded dense CPU RenderScene snapshot reference and a provisional public
-CPU-feature facade. The facade supplies typed storage, issued handles, and a
-controlled CPU phase only; FramePipeline and GPU scene integration remain open.
-See the roadmap for implementation and evidence limits.
+closed bounded dense CPU RenderScene/typed-feature data boundary and a
+provisional public CPU-feature facade. The independently reviewed evidence is
+limited to typed storage, issued handles, and a controlled CPU phase;
+FramePipeline and GPU scene integration remain open. See the roadmap for
+implementation and evidence limits.
 
 `ROADMAP.md` is the single source of truth for plan order and authorized work.
 This README intentionally summarizes the current state and does not keep a
