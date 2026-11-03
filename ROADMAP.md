@@ -19,8 +19,14 @@ S0 and S1 are one foundation closure. After S0 pins the inputs, their bounded wo
 
 The S0/S1 foundation has been accepted for the named Windows DX12 and WGL
 matrix. Its [Rendering closure record](https://github.com/fluxel-project/fluxel-rendering/blob/1085c9e7e8fd50b1cfa58201b1838687263c482e/documents/s0-s1-closure.md)
-identifies exact dependencies, evidence and deferred targets. S2 and later work
-remains future work; this foundation acceptance is not a release claim.
+identifies exact dependencies, evidence and deferred targets. Rendering commit
+[`8ddf2da`](https://github.com/fluxel-project/fluxel-rendering/commit/8ddf2da072e7d48331e423a6921f4deaffadf279)
+implements S2 Shader and minimal S3 Material, with focused tests and named
+Windows DX12/WGL integration runs. This does not extend support to other targets
+or certify full regression. Rendering now has a bounded S4 CPU RenderScene
+implementation, public typed-feature facade, and independent external reference.
+The facade is not FramePipeline or GPU scene work and creates no new support
+claim; S4 closure and the S5/S6 integration gates remain pending.
 
 ## S0 — Foundation
 
@@ -74,9 +80,33 @@ Material lowers its private IR to generic WGSL source units and interface metada
 
 Owner: `fluxel-rendering`.
 
-Build render-only, data-oriented scene storage: generational `RenderId`, reference mesh data, camera/view, transform, bounds, typed Feature storage, batched ChangeSets, dirty ranges, and a stable frame snapshot. ECS and ordinary adapters both map external identity into that batch boundary; Renderer does not import an ECS or prescribe a universal SoA/AoS layout.
+The implemented CPU subset provides render-only `RenderScene<R>` storage with
+generational `RenderId`/view IDs, consumer-chosen cloneable record resources,
+views, transforms, bounds, transactional ChangeSets, dirty ranges, and stable
+frame snapshots. `RenderResources<G, M>` is a convenience geometry/material
+reference bundle, not a per-scene type limit. Ordinary and ECS-shaped adapters
+map external identity into that batch boundary; Renderer does not import an ECS
+or prescribe a universal SoA/AoS layout. This is not heterogeneous Feature
+storage. Mutable records are dense and compact on removal while stable
+generational identities and dirty slot ranges remain observable.
 
-Define only the public Rust types needed by an external FramePipeline and RenderFeature: the extension trait, controlled context, opaque handles, phase contribution, error surface, and visibility restrictions. Keep Graph compiler, allocator, scheduler, RHI submission, and backend objects private. An external crate must compile against this provisional surface before it is stabilized.
+The independent external CPU reference compiles against the public scene and
+CPU-feature types, compares ordinary and ECS-shaped adapters, retains an old
+snapshot across an update, and associates two differently shaped application-
+owned typed payloads with scene versions. It uses `FeatureIssuer`-issued opaque
+handles and contexts, issuer-bound `TypedFeatureStorage`, the static
+`CpuFeature` trait, and controlled CPU phase contributions. Scene, issuer,
+handle, version, storage, collector, and replay mismatches are structured
+errors. It does not define `RenderFeature` or `FramePipeline`, and cannot reach
+Graph/RHI execution state. Graph compiler, allocator, scheduler, RHI submission,
+and backend objects remain private.
+
+This is a bounded provisional public CPU facade, not a Forward/GPU extension
+surface. The compile-fail negative confirms that the external dependency cannot
+name Renderer-private Graph state. The formal S4 exit still requires its original
+bounded public/privacy and independent-consumer acceptance assessment; no
+unfinished S4 requirement moves to S5. S5 consumes a closed S4 boundary for
+Forward/GPU integration and does not retroactively close it.
 
 Algorithm-specific traits normally remain Feature- or consumer-owned. Core adds
 only a cross-Feature protocol with demonstrated shared snapshot, identity,
@@ -90,7 +120,11 @@ Start with ordinary traits, structs, tuples and necessary associated types,
 not a generic framework. Static dispatch still needs measurement of code size,
 compile time and workload behavior rather than a zero-cost claim.
 
-**Exit:** multiple objects and views update incrementally with stale-ID and conflicting-batch refusal; snapshots admit concurrent reads; typed Feature data snapshots without a universal layout; and the external prototype cannot reach private Graph/RHI execution state. A CPU batch proof does not claim a GPU-culling/indirect protocol.
+Focused CPU evidence covers incremental multi-object/view updates, stale-ID and
+conflicting-batch refusal, capacity and value refusal, immutable concurrent
+snapshot reads, dirty ranges, adapter equivalence, and the public CPU facade's
+typed-storage/issuer/phase error boundaries. This is not GPU culling, indirect
+work, a FramePipeline contract, or a complete S4 closure.
 
 ## S5 — Forward integration candidate
 
