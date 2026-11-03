@@ -22,8 +22,13 @@ matrix. Its [Rendering closure record](https://github.com/fluxel-project/fluxel-
 identifies exact dependencies, evidence and deferred targets. Rendering commit
 [`8ddf2da`](https://github.com/fluxel-project/fluxel-rendering/commit/8ddf2da072e7d48331e423a6921f4deaffadf279)
 implements S2 Shader and minimal S3 Material, with focused tests and named
-Windows DX12/WGL integration runs. This does not extend support to other targets
-or certify full regression. Rendering now has a closed bounded S4 CPU
+Windows DX12/WGL integration runs. The subsequent review follow-up closes the
+named S2/S3 fixture matrix with refreshed native evidence using Bases
+`ee640d57a8d7c32d251252d0e8b32950636a770c`; the
+[S2/S3 closure record](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/s2-s3-closure.md)
+retains the exact source archives, locks, diagnostics and inspected output.
+This does not extend support to other targets or certify full regression.
+Rendering also has a closed bounded S4 CPU
 RenderScene/typed-feature data boundary, with independently reviewed external
 evidence at product `e4ec252`. The facade is not FramePipeline or GPU scene work
 and creates no new support claim; the S5/S6 integration gates remain pending.

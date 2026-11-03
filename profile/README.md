@@ -8,11 +8,15 @@ The four monorepositories are `fluxel-bases`, `fluxel-rendering`,
 [`fluxel-rhi`](https://github.com/fluxel-project/fluxel-rhi) repository. RHI is
 a stable maintenance baseline with explicit open TODOs and target-evidence
 limits. Rendering implements the Bases asset integration, private RenderGraph,
-independent Shader core, minimal Material core, and a bounded dense CPU
-closed bounded CPU RenderScene/typed-feature data boundary and a provisional
+independent Shader core, minimal Material core, and a closed bounded dense CPU
+RenderScene/typed-feature data boundary and a provisional
 public CPU-feature facade. Its independently reviewed typed storage, issued
 handles, and controlled CPU phase do not establish a FramePipeline or GPU scene
 API; those remain pending, along with the roadmap's evidence and support limits.
+
+The named Windows DX12/WGL Shader/Material fixture matrix has refreshed retained
+native evidence using Bases `ee640d5`; other targets and full regression remain
+outside that closure.
 
 The host repository contains both reusable platform crates and runtime
 composition. Platform crates do not depend on rendering; runtime composition

@@ -16,7 +16,9 @@ closed bounded dense CPU RenderScene/typed-feature data boundary and a
 provisional public CPU-feature facade. The independently reviewed evidence is
 limited to typed storage, issued handles, and a controlled CPU phase;
 FramePipeline and GPU scene integration remain open. See the roadmap for
-implementation and evidence limits.
+implementation and evidence limits. The named Windows DX12/WGL S2/S3 fixture
+matrix has refreshed retained evidence at Bases `ee640d5`; this does not
+recertify the separately bound S4 CPU closure or imply full regression.
 
 `ROADMAP.md` is the single source of truth for plan order and authorized work.
 This README intentionally summarizes the current state and does not keep a
