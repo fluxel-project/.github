@@ -11,14 +11,14 @@ Fluxel currently has four monorepositories: `fluxel-bases`,
 a stable maintenance baseline: consumer-proven additions remain possible, while
 its open TODOs and target-evidence limits remain explicit. The current roadmap
 starts with the Bases asset core and renderer-internal RenderGraph integration.
-Rendering implements the independent Shader and minimal Material cores plus a
-closed bounded dense CPU RenderScene/typed-feature data boundary and a
-provisional public CPU-feature facade. The independently reviewed evidence is
-limited to typed storage, issued handles, and a controlled CPU phase;
-FramePipeline and GPU scene integration remain open. See the roadmap for
-implementation and evidence limits. The named Windows DX12/WGL S2/S3 fixture
-matrix has refreshed retained evidence at Bases `ee640d5`; this does not
-recertify the separately bound S4 CPU closure or imply full regression.
+Rendering implements the independent Shader and minimal Material cores, the
+closed bounded S4 CPU RenderScene/typed-feature facade, and the
+[closed S5 Forward candidate](https://github.com/fluxel-project/fluxel-rendering/blob/6e160488d0e3e4d6663f7a866e2b445235b1cbd8/documents/s5-forward-closure.md). S5 adds the bounded public FramePipeline,
+scene preparation, residency and frame data, with six reviewed DX12/WGL native
+attempts and retained release measurements. S6's external typed Feature, custom
+material, external pipeline and built-in mesh combination in one frame remains
+pending; no product MVP or full regression is implied. Historical S2/S3 and S4
+closures retain their original source/evidence identities.
 
 `ROADMAP.md` is the single source of truth for plan order and authorized work.
 This README intentionally summarizes the current state and does not keep a

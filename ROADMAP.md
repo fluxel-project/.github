@@ -31,7 +31,13 @@ This does not extend support to other targets or certify full regression.
 Rendering also has a closed bounded S4 CPU
 RenderScene/typed-feature data boundary, with independently reviewed external
 evidence at product `e4ec252`. The facade is not FramePipeline or GPU scene work
-and creates no new support claim; the S5/S6 integration gates remain pending.
+and creates no new support claim. The subsequent [S5 Forward closure](https://github.com/fluxel-project/fluxel-rendering/blob/6e160488d0e3e4d6663f7a866e2b445235b1cbd8/documents/s5-forward-closure.md)
+adds the bounded public FramePipeline, multi-layout Scene/Material/Shader
+preparation, persistent residency and completion-owned frame data. Its six
+DX12/WGL Forward, device-isolation and Surface attempts have independently
+reviewed raw evidence, and both routes retain five-sample release baselines.
+This closes the S5 candidate only: S6 same-frame external Feature composition
+and product MVP acceptance remain pending, as does the final full regression.
 
 ## S0 — Foundation
 
@@ -148,7 +154,7 @@ An accepted upload with an enforceable RHI dependency may serve its named graph 
 
 Owner: `fluxel-rendering`, with an independent external Rust crate.
 
-The external crate supplies one RenderFeature and one FramePipeline through only the S4 public facade. In one real frame it contributes batched typed data and a phase, declares Graph resource access, uses a custom material function, and renders with the same Material, Shader, Renderer, Graph, and RHI path as the built-in mesh. The same frame demonstrates composition with a distinct local provider; phase policy performs any required final merge/order or rejects an incompatible combination. It cannot introduce a core object-type switch, direct submission, or a second frame scheduler.
+The external crate supplies one RenderFeature and one FramePipeline through only the public Renderer facade shaped in S4/S5. In one real frame it contributes batched typed data and a phase, declares Graph resource access, uses a custom material function, and renders with the same Material, Shader, Renderer, Graph, and RHI path as the built-in mesh. The same frame demonstrates composition with a distinct local provider; phase policy performs any required final merge/order or rejects an incompatible combination. It cannot introduce a core object-type switch, direct submission, or a second frame scheduler.
 
 **Exit:** that integrated artifact and its failure cases prove the exercised extension subset, using statically composed concrete Feature and Pipeline types without trait-object dispatch or runtime type erasure. This is the first renderer product closure. Runtime loading of unknown Feature types and a stable plugin binary ABI are outside the static extension architecture.
 
