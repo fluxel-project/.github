@@ -73,6 +73,13 @@ implementation switching uses explicit enum branches over compiled types.
 This excludes loading unknown Feature types at runtime, while scene contents,
 resource descriptors and Graph topology remain runtime data.
 
+The accepted bounded S6 consumer is implemented in `fluxel-rendering` plus an
+external Rust crate: it composes a typed Feature, custom material/pipeline and
+built-in mesh through one Graph-backed frame. Its audited DX12/WGL evidence is
+recorded in the [S6 closure record](https://github.com/fluxel-project/fluxel-rendering/blob/c163db2362154fbb75289a6a5263312b69350d1e/documents/s6-typed-forward-closure.md).
+This establishes neither browser/Metal support nor S7/S8 or full-regression
+completion.
+
 ### Material compilation
 
 ```text

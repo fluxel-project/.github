@@ -15,10 +15,14 @@ Rendering implements the independent Shader and minimal Material cores, the
 closed bounded S4 CPU RenderScene/typed-feature facade, and the
 [closed S5 Forward candidate](https://github.com/fluxel-project/fluxel-rendering/blob/6e160488d0e3e4d6663f7a866e2b445235b1cbd8/documents/s5-forward-closure.md). S5 adds the bounded public FramePipeline,
 scene preparation, residency and frame data, with six reviewed DX12/WGL native
-attempts and retained release measurements. S6's external typed Feature, custom
-material, external pipeline and built-in mesh combination in one frame remains
-pending; no product MVP or full regression is implied. Historical S2/S3 and S4
-closures retain their original source/evidence identities.
+attempts and retained release measurements. S6's bounded product MVP is
+accepted for the audited DX12/WGL matrix: an external typed Feature, custom
+material and pipeline compose with a built-in mesh in one Graph-backed frame.
+Its [closure record](https://github.com/fluxel-project/fluxel-rendering/blob/c163db2362154fbb75289a6a5263312b69350d1e/documents/s6-typed-forward-closure.md)
+and archived five-sample baselines retain the limited evidence. The RHI
+`b5d569f`, Bases `ee640d5`, and Host `33a6bbb` consumer revisions are unchanged.
+S7/S8, browser/Metal expansion, and final full regression remain open.
+Historical S2/S3 and S4 closures retain their original source/evidence identities.
 
 `ROADMAP.md` is the single source of truth for plan order and authorized work.
 This README intentionally summarizes the current state and does not keep a

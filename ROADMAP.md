@@ -36,8 +36,13 @@ adds the bounded public FramePipeline, multi-layout Scene/Material/Shader
 preparation, persistent residency and completion-owned frame data. Its six
 DX12/WGL Forward, device-isolation and Surface attempts have independently
 reviewed raw evidence, and both routes retain five-sample release baselines.
-This closes the S5 candidate only: S6 same-frame external Feature composition
-and product MVP acceptance remain pending, as does the final full regression.
+This closes the S5 candidate. S6's bounded product MVP is now accepted: its
+external Rust crate composes a typed Feature, custom material and pipeline with
+the built-in mesh in one frame through the normal Graph path. Four audited DX12
+and WGL offscreen/Surface attempts and archived five-sample baselines support
+only that bounded matrix; [the S6 closure record](https://github.com/fluxel-project/fluxel-rendering/blob/c163db2362154fbb75289a6a5263312b69350d1e/documents/s6-typed-forward-closure.md)
+retains the exact source and evidence identity. S7, S8, other targets, and the
+final full regression remain open.
 
 ## S0 — Foundation
 
@@ -157,6 +162,13 @@ Owner: `fluxel-rendering`, with an independent external Rust crate.
 The external crate supplies one RenderFeature and one FramePipeline through only the public Renderer facade shaped in S4/S5. In one real frame it contributes batched typed data and a phase, declares Graph resource access, uses a custom material function, and renders with the same Material, Shader, Renderer, Graph, and RHI path as the built-in mesh. The same frame demonstrates composition with a distinct local provider; phase policy performs any required final merge/order or rejects an incompatible combination. It cannot introduce a core object-type switch, direct submission, or a second frame scheduler.
 
 **Exit:** that integrated artifact and its failure cases prove the exercised extension subset, using statically composed concrete Feature and Pipeline types without trait-object dispatch or runtime type erasure. This is the first renderer product closure. Runtime loading of unknown Feature types and a stable plugin binary ABI are outside the static extension architecture.
+
+The bounded exit is accepted for the audited DX12/WGL matrix. Rendering retains
+the integration artifact and external crate; the consumed RHI (`b5d569f`),
+Bases (`ee640d5`), and Host (`33a6bbb`) revisions remain unchanged. Native
+Surface resize is Host lifecycle evidence, while logical asset replacement is
+the Bases contract consumed by Rendering. This does not authorize browser,
+Metal, broad plugin, or production-scene support claims.
 
 ## S7 — Selected rendering expansion
 

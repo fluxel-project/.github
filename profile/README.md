@@ -12,9 +12,12 @@ independent Shader core, minimal Material core, and the closed bounded S4 CPU
 scene/feature data facade. The [S5 Forward candidate](https://github.com/fluxel-project/fluxel-rendering/blob/6e160488d0e3e4d6663f7a866e2b445235b1cbd8/documents/s5-forward-closure.md) now adds the public
 bounded FramePipeline, scene preparation, residency and frame data. Six reviewed
 DX12/WGL Forward/device-isolation/Surface attempts and separate release baselines
-support that scope. S6 same-frame external typed Feature composition and product
-MVP closure remain pending; other targets and full regression are not implied.
-Historical closure records retain their own exact input identities.
+support that scope. The bounded S6 product MVP is accepted for the audited
+DX12/WGL matrix: an external typed Feature and custom material/pipeline compose
+with the built-in mesh in one Graph-backed frame. The [S6 closure record](https://github.com/fluxel-project/fluxel-rendering/blob/c163db2362154fbb75289a6a5263312b69350d1e/documents/s6-typed-forward-closure.md)
+and archived baselines define that limited result; S7/S8, browser/Metal
+expansion, and final full regression remain open. Historical closure records
+retain their own exact input identities.
 
 The host repository contains both reusable platform crates and runtime
 composition. Platform crates do not depend on rendering; runtime composition
