@@ -15,9 +15,14 @@ DX12/WGL Forward/device-isolation/Surface attempts and separate release baseline
 support that scope. The bounded S6 product MVP is accepted for the audited
 DX12/WGL matrix: an external typed Feature and custom material/pipeline compose
 with the built-in mesh in one Graph-backed frame. The [S6 closure record](https://github.com/fluxel-project/fluxel-rendering/blob/c163db2362154fbb75289a6a5263312b69350d1e/documents/s6-typed-forward-closure.md)
-and archived baselines define that limited result; S7/S8, browser/Metal
-expansion, and final full regression remain open. Historical closure records
-retain their own exact input identities.
+and archived baselines define that limited result. S7 is closed only for its
+bounded Deferred/PBR/CodeNode DX12/WGL consumer, while S8 is closed only for
+the selected 10,000-draw/1,000-texture Forward CPU/API validation workload and
+lifecycle matrix; the [S8 measured closure](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/s8-measured-closure.md)
+retains its source-bound evidence. Neither result claims GPU timing,
+browser/Metal expansion, Unity/SRP parity, general lighting, Forward+, shadows,
+or post-processing. Historical closure records retain their own exact input
+identities.
 
 The host repository contains both reusable platform crates and runtime
 composition. Platform crates do not depend on rendering; runtime composition

@@ -41,8 +41,12 @@ external Rust crate composes a typed Feature, custom material and pipeline with
 the built-in mesh in one frame through the normal Graph path. Four audited DX12
 and WGL offscreen/Surface attempts and archived five-sample baselines support
 only that bounded matrix; [the S6 closure record](https://github.com/fluxel-project/fluxel-rendering/blob/c163db2362154fbb75289a6a5263312b69350d1e/documents/s6-typed-forward-closure.md)
-retains the exact source and evidence identity. S7, S8, other targets, and the
-final full regression remain open.
+retains the exact source and evidence identity. S7 is closed only for its named
+Deferred DX12/WGL consumer, and S8 only for its named material-heavy Forward
+CPU/API workload and lifecycle matrix. The final closure record identifies the
+exact revisions and commands. Other backends, browser hosts, and unselected
+pipeline capabilities remain open or deferred; no stage creates a general
+engine or programmable-render-pipeline claim.
 
 ## S0 — Foundation
 
@@ -181,6 +185,18 @@ Expand only through selected consumers: Code Nodes and broader MaterialGraph aut
 Owner: `fluxel-rendering`, with RHI changes only for proven consumer needs.
 
 Measurements begin with every earlier real workload. Add batching, streaming, LOD, GPU culling, indirect work, async compute, allocation reuse, aliasing, and memory budgeting only when representative baselines identify a need. Each selected optimization retains workloads, raw metrics, thresholds, completion-safe lifetime evidence, and the relevant target matrix; this stage does not require every listed technique.
+
+The selected S8 result is an index-based Graph-validation optimization for the
+10,000-draw/1,000-texture material-heavy Forward workload. It retains raw
+samples, thresholds, allocation/upload counters, and completion-safe lifecycle
+evidence. CPU/API median submit-time improvements were DX12 89.976% cold,
+91.598% warm, and 92.166% after ten-percent replacement; WGL was 91.714%,
+91.779%, and 92.429%. No GPU timestamps were observed, so these values do not
+claim GPU-duration improvement. Native lifecycle workloads cover bounded
+in-flight replacement and device separation; Renderer fault tests separately
+cover cancellation plus upload/recording failure ownership. The result does not
+certify browser support, Unity/SRP parity, general lighting, Forward+, shadows,
+post-processing, or unselected techniques.
 
 ## Deferred and future scope
 

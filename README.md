@@ -20,9 +20,15 @@ accepted for the audited DX12/WGL matrix: an external typed Feature, custom
 material and pipeline compose with a built-in mesh in one Graph-backed frame.
 Its [closure record](https://github.com/fluxel-project/fluxel-rendering/blob/c163db2362154fbb75289a6a5263312b69350d1e/documents/s6-typed-forward-closure.md)
 and archived five-sample baselines retain the limited evidence. The RHI
-`b5d569f`, Bases `ee640d5`, and Host `33a6bbb` consumer revisions are unchanged.
-S7/S8, browser/Metal expansion, and final full regression remain open.
-Historical S2/S3 and S4 closures retain their original source/evidence identities.
+`b5d569f` and Bases `ee640d5` consumer revisions remain unchanged; the native
+window policy is supplied by Host `8d10162`. S7 is closed only for its bounded
+Deferred/PBR/CodeNode DX12/WGL consumer. S8 is closed only for the selected
+10,000-draw/1,000-texture Forward CPU/API validation workload and lifecycle
+matrix; its [measured closure](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/s8-measured-closure.md)
+records the source-bound evidence. These results do not claim GPU timing,
+browser/Metal support, Unity/SRP parity, general lighting, Forward+, shadows,
+or post-processing. Historical S2/S3 and S4 closures retain their original
+source/evidence identities.
 
 `ROADMAP.md` is the single source of truth for plan order and authorized work.
 This README intentionally summarizes the current state and does not keep a
