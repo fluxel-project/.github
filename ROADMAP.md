@@ -48,6 +48,12 @@ exact revisions and commands. Other backends, browser hosts, and unselected
 pipeline capabilities remain open or deferred; no stage creates a general
 engine or programmable-render-pipeline claim.
 
+The subsequent [S0–S8 maintenance review](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/s0-s8-review-follow-up.md)
+addresses texture-subresource admission and commit-level CPU/tooling gates.
+Historical GPU archives keep their original input identities. Future cross-pass
+extension work must first select a real external producer/consumer; this review
+does not add new pipeline features or expand backend certification.
+
 ## S0 — Foundation
 
 Owners: `fluxel-bases`, `fluxel-rendering`, and `fluxel-rhi` for their respective contracts.
