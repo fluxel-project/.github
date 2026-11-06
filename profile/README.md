@@ -18,7 +18,7 @@ with the built-in mesh in one Graph-backed frame. The [S6 closure record](https:
 and archived baselines define that limited result. S7 is closed only for its
 bounded Deferred/PBR/CodeNode DX12/WGL consumer, while S8 is closed only for
 the selected 10,000-draw/1,000-texture Forward CPU/API validation workload and
-lifecycle matrix; the [S8 measured closure](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/s8-measured-closure.md)
+lifecycle matrix; the [S8 measured closure](https://github.com/fluxel-project/fluxel-rendering/blob/c24f9adf17cfd12ed2bc3035f45cd1f477879afc/documents/s8-measured-closure.md)
 retains its source-bound evidence. Neither result claims GPU timing,
 browser/Metal expansion, Unity/SRP parity, general lighting, Forward+, shadows,
 or post-processing. Historical closure records retain their own exact input

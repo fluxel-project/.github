@@ -24,7 +24,7 @@ and archived five-sample baselines retain the limited evidence. The RHI
 window policy is supplied by Host `8d10162`. S7 is closed only for its bounded
 Deferred/PBR/CodeNode DX12/WGL consumer. S8 is closed only for the selected
 10,000-draw/1,000-texture Forward CPU/API validation workload and lifecycle
-matrix; its [measured closure](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/s8-measured-closure.md)
+matrix; its [measured closure](https://github.com/fluxel-project/fluxel-rendering/blob/c24f9adf17cfd12ed2bc3035f45cd1f477879afc/documents/s8-measured-closure.md)
 records the source-bound evidence. These results do not claim GPU timing,
 browser/Metal support, Unity/SRP parity, general lighting, Forward+, shadows,
 or post-processing. Historical S2/S3 and S4 closures retain their original

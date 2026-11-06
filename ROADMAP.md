@@ -25,7 +25,7 @@ implements S2 Shader and minimal S3 Material, with focused tests and named
 Windows DX12/WGL integration runs. The subsequent review follow-up closes the
 named S2/S3 fixture matrix with refreshed native evidence using Bases
 `ee640d57a8d7c32d251252d0e8b32950636a770c`; the
-[S2/S3 closure record](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/s2-s3-closure.md)
+[S2/S3 closure record](https://github.com/fluxel-project/fluxel-rendering/blob/c24f9adf17cfd12ed2bc3035f45cd1f477879afc/documents/s2-s3-closure.md)
 retains the exact source archives, locks, diagnostics and inspected output.
 This does not extend support to other targets or certify full regression.
 Rendering also has a closed bounded S4 CPU
@@ -48,7 +48,7 @@ exact revisions and commands. Other backends, browser hosts, and unselected
 pipeline capabilities remain open or deferred; no stage creates a general
 engine or programmable-render-pipeline claim.
 
-The subsequent [S0–S8 maintenance review](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/review-follow-up.md#current-maintenance-review)
+The subsequent [S0–S8 maintenance review](https://github.com/fluxel-project/fluxel-rendering/blob/c24f9adf17cfd12ed2bc3035f45cd1f477879afc/documents/review-follow-up.md#current-maintenance-review)
 addresses texture-subresource admission and commit-level CPU/tooling gates.
 Historical GPU archives keep their original input identities. Future cross-pass
 extension work must first select a real external producer/consumer; this review
@@ -131,7 +131,7 @@ This is a bounded provisional public CPU facade, not a Forward/GPU extension
 surface. The compile-fail negative confirms that the external dependency cannot
 name Renderer-private Graph state. Its original data/privacy and independent-
 consumer acceptance is closed by the reviewed
-[S4 CPU closure record](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/s4-cpu-closure.md).
+[S4 CPU closure record](https://github.com/fluxel-project/fluxel-rendering/blob/c24f9adf17cfd12ed2bc3035f45cd1f477879afc/documents/s4-cpu-closure.md).
 No unfinished S4 requirement moves to S5. S5 consumes this closed CPU boundary
 for Forward/GPU integration and does not retroactively expand it.
 
@@ -214,3 +214,7 @@ Capture/replay, Canvas 2D/basic text, declarative UI, Blender tooling, and JavaS
 - Resources are valid only for the selected RHI device identity and its current lifecycle. A foreign or stale resource returns a structured error before a backend call; renderer-private cache keys use only identity facts exposed by the selected RHI baseline.
 - Browser and mini-game adapters own lifecycle adaptation only. GPU objects, contexts, leases, and browser promises stay backend-private.
 - Unsupported requirements fail explicitly. Material preparation resolves reflected binding usage to concrete resource identities, ranges, and access modes; Graph validates it before recording.
+
+## Rendering document layout
+
+Current Rendering contracts live with their owners: [Renderer](https://github.com/fluxel-project/fluxel-rendering/blob/main/crates/renderer/documents/design.md), [Shader](https://github.com/fluxel-project/fluxel-rendering/blob/main/crates/shader/documents/design.md), and [Material](https://github.com/fluxel-project/fluxel-rendering/blob/main/crates/material/documents/design.md). Renderer consumers live under crates/renderer/examples/. Historical acceptance links above intentionally select their original source revision; local plans, reviews and archives are kept outside the tracked design tree.

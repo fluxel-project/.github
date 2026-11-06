@@ -79,8 +79,8 @@ built-in mesh through one Graph-backed frame. Its audited DX12/WGL evidence is
 recorded in the [S6 closure record](https://github.com/fluxel-project/fluxel-rendering/blob/c163db2362154fbb75289a6a5263312b69350d1e/documents/s6-typed-forward-closure.md).
 The subsequent S7 Deferred/PBR/CodeNode consumer and S8 material-heavy Forward
 CPU/API validation result remain bounded to their named DX12/WGL inputs; see
-the [S7 historical closure](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/s7-deferred-closure.md)
-and [S8 measured closure](https://github.com/fluxel-project/fluxel-rendering/blob/main/documents/s8-measured-closure.md).
+the [S7 historical closure](https://github.com/fluxel-project/fluxel-rendering/blob/c24f9adf17cfd12ed2bc3035f45cd1f477879afc/documents/s7-deferred-closure.md)
+and [S8 measured closure](https://github.com/fluxel-project/fluxel-rendering/blob/c24f9adf17cfd12ed2bc3035f45cd1f477879afc/documents/s8-measured-closure.md).
 They establish neither browser/Metal support, GPU-duration measurements,
 general programmable pipelines, Unity/SRP parity, Forward+, shadows, nor
 post-processing.
