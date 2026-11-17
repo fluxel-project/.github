@@ -29,7 +29,7 @@ composition. Platform crates do not depend on rendering; runtime composition
 may combine them with `fluxel-rendering` to produce native applications.
 
 Fluxel grows through demonstrated Rust vertical slices and named real-target
-evidence. Capture/replay, Canvas 2D/basic text, declarative UI, Blender tooling,
+evidence. Capture/replay, Canvas 2D/basic text, declarative UI, Blender editor/import/export tooling,
 and JavaScript encapsulation are deferred and undecided.
 
 The target renderer is data-oriented and ECS-friendly without requiring an ECS.
@@ -50,3 +50,15 @@ see the organization documentation:
 - [Ecosystem architecture](https://github.com/fluxel-project/.github/blob/main/ECOSYSTEM_ARCHITECTURE.md)
 - [Development principles](https://github.com/fluxel-project/.github/blob/main/DEVELOPMENT_PRINCIPLES.md)
 - [Evidence policy](https://github.com/fluxel-project/.github/blob/main/EVIDENCE_POLICY.md)
+
+## Next material direction
+
+The next planned Rendering delivery expands node-authored material semantics
+through both Forward and Deferred on DX12/WGL, including transparent blending,
+refraction and thickness-based absorption. Babylon.js is the functional and
+algorithmic reference; Deferred may compose specialized passes. Blender-facing
+semantic preparation is planned, while editor, file-format/parser and plugin
+implementation remain outside this delivery. These are planned capabilities,
+not additions to the historical support claims above. The
+[roadmap](https://github.com/fluxel-project/.github/blob/main/ROADMAP.md)
+is the authoritative order and acceptance scope.

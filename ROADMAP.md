@@ -6,6 +6,14 @@ The independent [`fluxel-rhi`](https://github.com/fluxel-project/fluxel-rhi) is 
 
 ## Delivery model
 
+For every M milestone, complete all selected functionality before consolidating
+tests, debugging, fixes and acceptance. During implementation, use source review,
+type/compile checks and static shader validation. Do not turn each small feature
+or example into a separate test/debug cycle. Consumer code and acceptance inputs
+may develop alongside the functionality; behavioral execution, oracle tuning,
+GPU/window evidence and regression belong to milestone closure. Record uncertain
+behavior explicitly, and keep existing tests and immutable failure evidence.
+
 S0 through S8 are implementation work packages, not release promises. Each closes only with implementation, structured refusal behavior, focused tests, relevant backend evidence, and an end-to-end ecosystem artifact. A green library test cannot close a cross-repository milestone.
 
 ```text
@@ -204,9 +212,229 @@ cover cancellation plus upload/recording failure ownership. The result does not
 certify browser support, Unity/SRP parity, general lighting, Forward+, shadows,
 post-processing, or unselected techniques.
 
+## M0 — Material capability and reference proof
+
+Owner: `fluxel-rendering`.
+
+M0 starts the next material roadmap without revising the bounded historical
+S0--S8 results. It pins Babylon.js revision
+`daae8d9483dcbb6308ebd0f6ca5b218783614771` as a functional reference and
+requires a capability ledger spanning the reference material families and their
+feature combinations: Unlit/Standard, metallic-roughness and specular-glossiness
+PBR, advanced lobes/subsurface effects, NodeMaterial, ShaderMaterial and custom
+extensions. Each entry names its source, semantic mapping, owner, dependencies,
+acceptance case and implemented/planned/blocked state. Unimplemented entries
+remain visible; a representative milestone does not close full Babylon parity.
+It records the precise selected RHI/Host/Bases revisions, locks, target matrix, and
+native integration entry artifact. Babylon classes and glTF fields are not the
+Fluxel material model; Blender is a future authoring/adapter reference, not an
+editor, parser, file-format, or plugin commitment.
+The owner-level contract is maintained in the
+[Material design](https://github.com/fluxel-project/fluxel-rendering/blob/main/crates/material/documents/design.md).
+
+Before an implementation API is designed, prove whether the selected RHI route
+exposes the texture, sampler, blend, depth, render-target, format, and capability
+facts required by M1. Record each required resource owner, binding access and
+failure point. A missing capability or format, unavailable refraction source or
+environment fallback, foreign/stale owner, missing required resource, or invalid
+alpha/refraction configuration must fail before the protected backend operation.
+Any required public RHI-contract change needs prior user consultation and a
+bounded consumer proof before changing that contract.
+
+**Exit:** the evidence artifact establishes the capability/refusal matrix and
+the executable source of truth for M1; it does not itself claim a new material
+product.
+
+### Renderer examples as staged acceptance consumers
+
+Establish the acceptance scenes before expanding each feature, then develop
+the scene and its production path together. Do not finish the entire material
+implementation before connecting complex consumers, or require every RHI
+example to be ported before useful implementation can start. This is an
+acceptance workstream within M0--M4, not a replacement milestone sequence.
+
+The next delivery batch first defines the acceptance contract for 02 (textured
+material), a small 04 instance grid, and the 12 capture harness: fixed inputs,
+observable parameter changes, independent expectations and failure boundaries.
+Connect the smallest 02 consumer through both pipelines, then connect a bounded
+07 capture-to-material consumer before stabilizing scene-texture bindings and
+pass ownership. Expand the original M1 feature batches against those consumers;
+do not delay this boundary proof until the complete dragon scene is ported.
+An incomplete example is an open acceptance target, not a reason to reduce the
+feature contract or to declare the feature complete from a library test.
+
+Copy and adapt scenes/assets from `fluxel-rhi/crates/rhi/examples/` into
+`fluxel-rendering/crates/renderer/examples/`; retain the RHI originals. Preserve
+source revisions, asset hashes, licenses and applicable notices. Copied scene
+content must use Material authoring, Shader composition, Renderer preparation
+and the real RenderGraph/RHI path. Copying direct RHI draw/submission code into
+a Renderer example does not establish a material consumer. Multi-pass effects
+belong to their Renderer Feature/phase owner.
+
+| Acceptance family | Source examples and intended material evidence | Delivery gate |
+| --- | --- | --- |
+| Sampling and dynamic instances | 02 textured quad, 03 planet/rocks, 04 cube grid, 09 mipmapped tunnel: UV/sampler/color-space/mips, texture variants and per-instance values | M0 connects 02 and a small 04 slice; M1 expands 03/09 with actual multi-object and resource replacement cases |
+| Multi-pass and masked geometry | 07 dragon/mirror, 08 Voyager MSAA, 10 plants: captured-image consumers, geometry/normal/depth, alpha cutoff, double-sided leaves, arrays and indirect-draw composition | Connect a bounded 07 or 10 consumer before freezing M1 pass/resource contracts; close the selected M1 capabilities through full scenes |
+| Material resource selection | 14 descriptor indexing and its fixed-array route: multiple material textures and selection | M1 proves portable multi-resource materials; native descriptor indexing has its own capability gate and is not required to claim portable sampling |
+| Transparency and generated products | 19 smoke/reflection scene, 23 particle simulation: overlapping transparency, emissive/additive particles and GPU-produced inputs | M1 adapts raster/material portions plus explicit sorted/peeling/refraction controls; native ray queries and multi-queue execution remain separately evidenced capabilities |
+| Submission and integration controls | 01 triangle, 05 per-draw constants, 06 compute filters, 11 visibility queries, 12 screenshot, 13 parallel recording, 15 multiview | Use 01/12 for the M0 harness; add selected controls alongside their real M1--M3 consumer, with explicit fallback and target evidence |
+| Native advanced boundaries | 16 ray tracing, 17 GPU queries, 18 meshlets, 20 GPU draw count, 21 sparse texture, 22 clear texture | Inventory in M0; adapt as M3 Feature/integration consumers when selected, without treating native backend capability as material functionality or imposing it on desktop WGL |
+
+Inventory all 01--23 examples, record their intended evidence and missing
+controls, and keep each adaptation visibly planned until executed. Multiple
+examples are expected; all may be adapted where useful. Port count is not a
+substitute for feature coverage. An original RHI image is a scene/reference
+baseline, not proof that the Renderer material implementation works.
+
+Existing scenes need added material-specific controls: metallic/roughness and
+ORM grids, nontrivial UV/tangent and mirrored/nonuniform transforms, diffuse and
+specular IBL, AO with isolated direct/indirect light, emissive/HDR, and overlapping
+glass with IOR/thickness/absorption. A blurred mirror capture does not prove PBR
+reflection or refraction; ordinary plants prove masking only after their material
+cutoff path is used; smoke or additive particles do not alone prove sorted-alpha
+or depth-peeling correctness. M2 extends these scenes with advanced-lobe/workflow
+comparisons, M3 with real custom nodes/Features, and M4 with versioned Blender
+semantic pairs and separately named browser targets.
+In particular, example 02's opaque texture shader is not an alpha-mode proof,
+and example 19's ray-query smoke must be reauthored as a raster-material
+consumer to test the portable transparent phase. Its original ray-query result
+cannot certify that new path. MSAA resolve and texture mip generation likewise
+do not certify roughness-dependent specular IBL or refraction.
+
+Before each feature batch, freeze concrete scene inputs, independent numerical
+expectations or reference tolerances, target capabilities, protected failure
+points and code entry. Each adopted example supplies a real-window mode and a
+deterministic evidence mode with identical scene/material semantics. Save inputs
+and expected results before execution, then retain raw readbacks, diagnostics,
+inspected window captures and hashes under one source/lock-bound attempt. Camera,
+time/seed, exposure, transfer functions and capture origin must be explicit.
+Paired parameter changes must make missing/ignored material effects observable.
+Cover corresponding invalid resources, unsupported capabilities, cache hits,
+replacement, resize and pending-completion failures. A skipped target, fallback,
+clear screenshot or successful compilation cannot close the named capability.
+
+## M1 — Node-authored representative PBR closure
+
+Owner: `fluxel-rendering`.
+
+One representative material is authored through the MaterialGraph/Code Node
+direction and uses the same material semantics and authored functions in both
+Forward and Deferred consumers on DX12 and desktop WGL. M1 internally batches
+work as necessary, but none of those batches is a separate closure. Acceptance
+is functional equivalence to the named Babylon reference semantics, not a
+pixel-exact comparison with a Babylon renderer.
+
+The closure includes normal mapping, ORM channels, emissive, ambient occlusion,
+and IBL; opaque, mask, and blend alpha modes; refraction/transmission from a
+declared refraction texture or environment fallback; and thickness-based
+Beer--Lambert absorption. It does not authorize arbitrary volumetric simulation.
+The first specular IBL consumer isolates the selected linear-specular LOD
+branch, complete prefiltered radiance mips, BRDF LUT/F0, and explicit camera
+direction before expansion to the PBR sphere grid. Its independent numeric
+oracle must sample the retained input bytes and compare actual Forward and
+Deferred readbacks; changed pixels alone do not prove the calculation. Both
+backends also require actual Surface presentation and an independent window
+capture compared with a same-input offscreen companion. Diffuse irradiance,
+texture mip generation, or a supplied synthetic LUT does not prove environment
+prefiltering or physical BRDF integration quality.
+The named material-resource consumer separates base-color and emissive color
+images from linear normal and ORM data. The selected Babylon input branch uses
+hardware sRGB decoding before filtering, admitted through actual device format
+support. A nonconstant black/white half-texel control must distinguish this
+from decoding an already filtered UNORM sample; constant textures cannot prove
+the boundary. Validate encoding, actual cached owners, and reflected locations
+before expanding to four named material textures and mixed capture sources.
+Include independent image controls, multiple objects, shared/aliased sources,
+and single-source generation replacement with pending work.
+Ordinary material mip generation starts from a retained base payload and runs
+through actual Graph blit producers before sampling. A first linear-RGBA8 slice
+separates explicit LOD 0, 1, 1.5 and 2 and a source-only control through both
+pipelines. It does not close the perspective tunnel's implicit derivatives,
+repeat addressing, filtering controls, anisotropy, or sRGB generation. Those
+remain real-consumer requirements; supplied CPU reference mips never replace
+GPU generation, and backend initialization diagnostics remain failures even
+when numerical pixels match.
+Mixed capture must combine actual GPU-produced and immutable asset inputs in
+one material. Independently named producer references, all logical-to-physical
+aliases, shared warm-cache imports and completion-gated asset publication must
+be exercised; no CPU readback/reupload substitutes for the Graph product. Exposure, tone
+mapping, output transfer, and HDR presentation form a separate output contract;
+input sRGB acceptance does not close that work.
+Ordinary transparent work uses alpha-index ordering followed by back-to-front
+composition. Optional dual depth peeling defaults to five configurable
+dual-ended rounds after initial depth reduction, resolving up to roughly ten
+layers within the reference algorithm's finite-quality limits. Excluded meshes
+follow the normal transparent path. The not-ready branch is a
+different condition; it is not evidence of that fallback. Finite peeling is an
+explicit quality limit, not an unlimited-layer guarantee. The selected OIT route
+needs its own capability and execution proof; refusing it cannot count as a
+successful OIT case. Capture composition must sample the producer's final
+color version, including its OIT and excluded sorted work, rather than its
+opaque attachment. Producer and receiver independently select ordinary or OIT
+work in the same Graph and submission; the receiver's final output is the
+readback or presentation source. Their native owners remain retained through
+completion covering the whole compiled chain. An offscreen capture path alone
+does not close Surface, typed-feature or Deferred composition acceptance.
+Deferred may use specialized transparent/refraction Graph passes when required
+by those methods.
+
+Material owns node composition, surface semantics, and static/dynamic authoring
+facts. Renderer owns pass and blend policy, sorting, chosen transparent and
+refraction phases, concrete binding resolution, Graph declarations, and
+completion ownership. Material never creates GPU objects, commands, Graph passes,
+or a second scheduler.
+
+**Exit:** one pinned cross-repository artifact retains authored node inputs,
+sources, selected capability facts, concrete bindings, Graph diagnostics, raw
+readbacks, and visible-window evidence. It proves every listed opaque and
+transparent/refraction/absorption case through both pipelines and both backends,
+including multiple in-flight submissions and the M0 refusal matrix. Material
+compilation, logical WGSL validation, a single pipeline, or a single backend does
+not close M1.
+The example families above supply complex acceptance consumers alongside the
+small diagnostic probes. Identical material definitions must reach both pipelines;
+single-mesh probes do not close the required multi-object/cross-Feature scenes.
+
+## M2 — Selected advanced surface workflows
+
+Owner: `fluxel-rendering`.
+
+Selected consumers extend M1 with clearcoat, sheen, specular, IOR, anisotropy,
+iridescence, selected subsurface/scattering and dispersion cases, Unlit/Standard
+compatibility, and specular-glossiness semantics. The M0 ledger keeps remaining
+reference capabilities visible rather than silently removing them from the goal.
+Each selected lobe or workflow names its input/resource/capability contract and
+both-pipeline evidence; no feature is accepted merely because its WGSL composes.
+
+## M3 — Broader node and custom-material consumers
+
+Owner: `fluxel-rendering` and named Feature owners.
+
+Select broader node vocabulary, ShaderMaterial-like custom surface functions,
+custom material extensions, and special-effect Features only through real
+consumers. They retain static Rust composition and Material-to-Shader lowering;
+they do not introduce dynamic node registries, runtime type erasure, or a second
+scheduler. Effects needing scene textures or multiple passes belong to the
+selected Renderer Feature/phase owner, not Material alone.
+
+## M4 — Blender semantic mapping and separately named browser follow-up
+
+Owner: `fluxel-rendering` with a future adapter consumer.
+
+Map supported Blender surface semantics to the established Rust material model as
+exact, approximate, bake-required, or unsupported. This may add an adapter only
+after a consumer demonstrates the boundary; it does not imply a Blender editor,
+file parser, serialization format, or plugin. Browser/WebGPU/WebGL evidence is a
+separately named target follow-up and does not inherit the DX12/WGL closure.
+
 ## Deferred and future scope
 
-Capture/replay, Canvas 2D/basic text, declarative UI, Blender tooling, and JavaScript encapsulation are deferred and undecided. A future game engine needs separate planning for Game Scene, gameplay/script runtime, game loop, bindings, and hot reload. It may adapt batches into RenderScene, but it is not a Rendering Roadmap stage.
+Capture/replay, Canvas 2D/basic text, declarative UI, Blender editor/import/export
+tooling, and JavaScript encapsulation are deferred and undecided. M0--M4 shape
+adapter-friendly material semantics only. A future game engine needs separate
+planning for Game Scene, gameplay/script runtime, game loop, bindings, and hot
+reload. It may adapt batches into RenderScene, but it is not a Rendering Roadmap
+stage.
 
 ## Cross-cutting requirements
 

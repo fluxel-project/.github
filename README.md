@@ -9,8 +9,8 @@ Fluxel currently has four monorepositories: `fluxel-bases`,
 `fluxel-rendering`, `fluxel-host`, and `fluxel-jsbridge`, plus the independent
 [`fluxel-rhi`](https://github.com/fluxel-project/fluxel-rhi) repository. RHI is
 a stable maintenance baseline: consumer-proven additions remain possible, while
-its open TODOs and target-evidence limits remain explicit. The current roadmap
-starts with the Bases asset core and renderer-internal RenderGraph integration.
+its open TODOs and target-evidence limits remain explicit. The historical foundation
+started with the Bases asset core and renderer-internal RenderGraph integration.
 Rendering implements the independent Shader and minimal Material cores, the
 closed bounded S4 CPU RenderScene/typed-feature facade, and the
 [closed S5 Forward candidate](https://github.com/fluxel-project/fluxel-rendering/blob/6e160488d0e3e4d6663f7a866e2b445235b1cbd8/documents/s5-forward-closure.md). S5 adds the bounded public FramePipeline,
@@ -19,9 +19,9 @@ attempts and retained release measurements. S6's bounded product MVP is
 accepted for the audited DX12/WGL matrix: an external typed Feature, custom
 material and pipeline compose with a built-in mesh in one Graph-backed frame.
 Its [closure record](https://github.com/fluxel-project/fluxel-rendering/blob/c163db2362154fbb75289a6a5263312b69350d1e/documents/s6-typed-forward-closure.md)
-and archived five-sample baselines retain the limited evidence. The RHI
-`b5d569f` and Bases `ee640d5` consumer revisions remain unchanged; the native
-window policy is supplied by Host `8d10162`. S7 is closed only for its bounded
+and archived five-sample baselines retain the limited evidence. Those closures retain their original dependency identities. Current consumer
+revisions and locks are recorded in Rendering; historical archives do not certify
+newer inputs. S7 is closed only for its bounded
 Deferred/PBR/CodeNode DX12/WGL consumer. S8 is closed only for the selected
 10,000-draw/1,000-texture Forward CPU/API validation workload and lifecycle
 matrix; its [measured closure](https://github.com/fluxel-project/fluxel-rendering/blob/c24f9adf17cfd12ed2bc3035f45cd1f477879afc/documents/s8-measured-closure.md)
@@ -52,3 +52,15 @@ among compiled concrete types.
 - [Historical Windows execution guide](stages/stage-01-windows.md)
 - [Historical WebGL2 execution guide](stages/stage-02-web.md)
 - [Historical WebGPU execution guide](stages/stage-02-webgpu.md)
+
+## Next material direction
+
+The next planned Rendering delivery expands node-authored material semantics
+through both Forward and Deferred on DX12/WGL, including transparent blending,
+refraction and thickness-based absorption. Babylon.js is the functional and
+algorithmic reference; Deferred may compose specialized passes. Blender-facing
+semantic preparation is planned, while editor, file-format/parser and plugin
+implementation remain outside this delivery. These are planned capabilities,
+not additions to the historical support claims above. The
+[roadmap](https://github.com/fluxel-project/.github/blob/main/ROADMAP.md)
+is the authoritative order and acceptance scope.

@@ -106,6 +106,23 @@ and executable pipeline validation. Both Material and Shader are independent
 `fluxel-rendering` crates; Shader remains available to compute, particles, and
 post processing.
 
+The planned material direction uses Babylon-style functional semantics and
+prepares for a future Blender adapter. Material definitions remain independent
+of Forward/Deferred implementation. Renderer owns scene-wide transparent
+ordering, OIT policy, refraction inputs and specialized passes; these may coexist
+with Deferred opaque lighting in the same Graph. Material owns surface inputs,
+units, authoring structure and static/dynamic distinctions. Shader owns generic
+composition and logical validation. See the [roadmap](ROADMAP.md) for selected
+features, reference revisions, target matrix and delivery order.
+
+A reference rendering approximation is distinct from an execution failure.
+Preparation rejects known unsupported requirements before their dependent GPU
+operation; partial execution retains owners through completion evidence. Missing
+resources or device loss must not silently become a successful quality fallback.
+Blender-facing semantic mapping introduces neither a file-format/parser contract
+nor an editor/plugin dependency. Public RHI changes still require user
+consultation and a proven consumer.
+
 ### Crate and portable-contract dependencies
 
 ```mermaid
@@ -214,7 +231,9 @@ Candidate and Unscheduled entries do not authorize implementation on their own.
 The authoritative RHI contract is maintained in `fluxel-rhi`; renderer,
 material, shader, and internal graph contracts are maintained in
 `fluxel-rendering`. Capture/replay, Canvas 2D/basic text, declarative UI,
-Blender tooling, and JavaScript encapsulation are deferred and undecided.
+Blender editor/import/export tooling, and JavaScript encapsulation are deferred
+and undecided. Material is being shaped for a future Blender adapter but does not
+currently define a file format, parser, editor, or plugin.
 
 A future engine runtime requires separate planning for Game Scene, TypeScript
 gameplay execution, the game loop, Rust/TS bindings, and script hot reload. It
