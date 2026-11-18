@@ -399,9 +399,12 @@ and peel stages. Its independently resolved output must preserve the copied
 background and honor foreground depth, material cutoff, and explicit exclusion.
 M1 acceptance must distinguish preserve-outside-coverage, foreground occlusion,
 and overlapping refractors, and cover the selected sorted and peeling paths.
-A batch of projected Blend and MaskBlend receivers must use one captured scene
-version and demonstrate ordinary ordering, peeled overlaps, and an excluded
-receiver in the same composed frame.
+A projected receiver batch may combine Opaque, Mask, Blend and MaskBlend.
+All receivers sample one captured scene version. Show coincident screen
+coverage at different depths with reversed input order, mask holes, producer
+occlusion, and unaffected background. The opaque and masked prefix supplies
+depth to both sorted and peeled transparency. Include peeled overlaps and an
+excluded receiver in the same composed frame.
 Use capture producers with scene draws and two distinct typed Features.
 Exercise disjoint scopes in Forward sorted and peeling passes, Deferred
 G-buffer geometry, transparent overlays and excluded draws. Include a Deferred
