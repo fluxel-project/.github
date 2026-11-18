@@ -308,6 +308,13 @@ consumer to test the portable transparent phase. Its original ray-query result
 cannot certify that new path. MSAA resolve and texture mip generation likewise
 do not certify roughness-dependent specular IBL or refraction.
 
+For the 08 acceptance case, select the device-supported sample count for the
+actual Forward color and depth. Demonstrate reduced edge aliasing with a
+material consumer, color resolve before readback or presentation, and rejection
+when the selected count is unavailable. Compare one-sample and multisample
+output with identical material, camera, and exposure. Deferred depth and
+G-buffer sampling require a separate contract with the selected RHI.
+
 Before each feature batch, freeze concrete scene inputs, independent numerical
 expectations or reference tolerances, target capabilities, protected failure
 points and code entry. Each adopted example supplies a real-window mode and a
