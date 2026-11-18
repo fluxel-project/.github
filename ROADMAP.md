@@ -370,6 +370,9 @@ through lighting and composition. Its terminal applies exposure and the Babylon
 Standard tone curve, then performs one sRGB transfer according to the actual
 output attachment format. M1 acceptance must exercise scene values above one,
 at least two exposure values, stable alpha, and both output transfer paths.
+Peeling and capture acceptance must carry above-one producer color through
+excluded sorted work and receiver sampling. The receiver's readback or Surface
+terminal performs the selected output conversion after composition.
 Native HDR display transfer and color-space selection are separate work.
 Ordinary transparent work uses alpha-index ordering followed by back-to-front
 composition. Optional dual depth peeling defaults to five configurable
