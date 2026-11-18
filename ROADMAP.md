@@ -394,6 +394,9 @@ lighting. Opaque and masked transmitters write the original depth attachment
 before the blended segment. Scene-color refraction uses an explicit capture
 input and a separate output initialized from the producer's final color.
 The receiver uses the producer camera and tests against the original depth.
+The peeling receiver must reuse the projected material binding in the initial
+and peel stages. Its independently resolved output must preserve the copied
+background and honor foreground depth, material cutoff, and explicit exclusion.
 M1 acceptance must distinguish preserve-outside-coverage, foreground occlusion,
 and overlapping refractors, and cover the selected sorted and peeling paths.
 
