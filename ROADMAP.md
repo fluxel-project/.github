@@ -382,8 +382,13 @@ work in the same Graph and submission; the receiver's final output is the
 readback or presentation source. Their native owners remain retained through
 completion covering the whole compiled chain. An offscreen capture path alone
 does not close Surface, typed-feature or Deferred composition acceptance.
-Deferred may use specialized transparent/refraction Graph passes when required
-by those methods.
+Deferred environment transmission uses a Forward overlay after G-buffer
+lighting. Opaque and masked transmitters write the original depth attachment
+before the blended segment. Scene-color refraction uses an explicit capture
+input and a separate output initialized from the producer's final color.
+The receiver uses the producer camera and tests against the original depth.
+M1 acceptance must distinguish preserve-outside-coverage, foreground occlusion,
+and overlapping refractors, and cover the selected sorted and peeling paths.
 
 Material owns node composition, surface semantics, and static/dynamic authoring
 facts. Renderer owns pass and blend policy, sorting, chosen transparent and
