@@ -399,6 +399,9 @@ and peel stages. Its independently resolved output must preserve the copied
 background and honor foreground depth, material cutoff, and explicit exclusion.
 M1 acceptance must distinguish preserve-outside-coverage, foreground occlusion,
 and overlapping refractors, and cover the selected sorted and peeling paths.
+A batch of projected Blend and MaskBlend receivers must use one captured scene
+version and demonstrate ordinary ordering, peeled overlaps, and an excluded
+receiver in the same composed frame.
 
 Material owns node composition, surface semantics, and static/dynamic authoring
 facts. Renderer owns pass and blend policy, sorting, chosen transparent and
