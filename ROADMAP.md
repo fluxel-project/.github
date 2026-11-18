@@ -229,6 +229,13 @@ It records the precise selected RHI/Host/Bases revisions, locks, target matrix, 
 native integration entry artifact. Babylon classes and glTF fields are not the
 Fluxel material model; Blender is a future authoring/adapter reference, not an
 editor, parser, file-format, or plugin commitment.
+For the selected material features, port the pinned Babylon shader functions
+and the host conditions that select them. Preserve input conventions, constants,
+operation order and composition. Material describes the inputs and Renderer
+binds them to Forward and Deferred passes through the Fluxel Graph. Record any
+required algorithm or resource-representation difference alongside its effect
+and its milestone acceptance case. Apply this approach within the existing
+M0--M4 scope.
 The owner-level contract is maintained in the
 [Material design](https://github.com/fluxel-project/fluxel-rendering/blob/main/crates/material/documents/design.md).
 
