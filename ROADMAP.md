@@ -402,11 +402,12 @@ and overlapping refractors, and cover the selected sorted and peeling paths.
 A batch of projected Blend and MaskBlend receivers must use one captured scene
 version and demonstrate ordinary ordering, peeled overlaps, and an excluded
 receiver in the same composed frame.
-Use a typed Deferred capture producer with both scene and Feature draws.
-Exercise its actual G-buffer reader scopes and sorted, peel, and excluded
-overlays, plus a producer that takes the Forward fallback without opaque draws.
-Cover Forward and Deferred receivers, offscreen readback and Surface
-presentation, and rejection of missing or duplicate draw claims.
+Use capture producers with scene draws and two distinct typed Features.
+Exercise disjoint scopes in Forward sorted and peeling passes, Deferred
+G-buffer geometry, transparent overlays and excluded draws. Include a Deferred
+producer that takes the Forward fallback without opaque draws. Cover Forward
+and Deferred receivers, offscreen readback and Surface presentation, and
+rejection of duplicate Feature bindings or incomplete draw claims.
 
 Material owns node composition, surface semantics, and static/dynamic authoring
 facts. Renderer owns pass and blend policy, sorting, chosen transparent and
