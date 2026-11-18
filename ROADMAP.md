@@ -364,9 +364,13 @@ when numerical pixels match.
 Mixed capture must combine actual GPU-produced and immutable asset inputs in
 one material. Independently named producer references, all logical-to-physical
 aliases, shared warm-cache imports and completion-gated asset publication must
-be exercised; no CPU readback/reupload substitutes for the Graph product. Exposure, tone
-mapping, output transfer, and HDR presentation form a separate output contract;
-input sRGB acceptance does not close that work.
+be exercised; no CPU readback/reupload substitutes for the Graph product.
+The selected HDR material route retains linear floating-point scene color
+through lighting and composition. Its terminal applies exposure and the Babylon
+Standard tone curve, then performs one sRGB transfer according to the actual
+output attachment format. M1 acceptance must exercise scene values above one,
+at least two exposure values, stable alpha, and both output transfer paths.
+Native HDR display transfer and color-space selection are separate work.
 Ordinary transparent work uses alpha-index ordering followed by back-to-front
 composition. Optional dual depth peeling defaults to five configurable
 dual-ended rounds after initial depth reduction, resolving up to roughly ten
